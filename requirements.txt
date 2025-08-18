@@ -1,0 +1,16 @@
+pandas
+numpy
+matplotlib
+seaborn
+pythermalcomfort
+weasyprint
+jinja2
+pydantic
+click
+pathlib
+typing_extensions
+python-dateutil
+scipy
+json-logic
+pyyaml
+holidays

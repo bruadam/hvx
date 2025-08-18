@@ -1,0 +1,49 @@
+{
+  "mappings": [
+    {
+      "file_pattern": "Fløng_Skole_.*\\.csv",
+      "column_mappings": {
+        "DateTime": "timestamp",
+        "Temperatur": "temperature",
+        "Fugtighed": "humidity",
+        "CO2": "co2",
+        "Lys": "light",
+        "Tilstedeværelse": "presence"
+      },
+      "building_name": "Fløng Skole",
+      "room_name": null
+    },
+    {
+      "file_pattern": "Ole_Rømer-Skolen_.*\\.csv",
+      "column_mappings": {
+        "DateTime": "timestamp",
+        "Temperatur": "temperature",
+        "Fugtighed": "humidity",
+        "CO2": "co2",
+        "Lys": "light",
+        "Tilstedeværelse": "presence"
+      },
+      "building_name": "Ole Rømer-Skolen",
+      "room_name": null
+    },
+    {
+      "file_pattern": "Reerslev_.*\\.csv",
+      "column_mappings": {
+        "DateTime": "timestamp",
+        "Temperatur": "temperature",
+        "Fugtighed": "humidity",
+        "CO2": "co2",
+        "Lys": "light",
+        "Tilstedeværelse": "presence"
+      },
+      "building_name": "Reerslev",
+      "room_name": null
+    }
+  ],
+  "default_building_name": "Unknown Building",
+  "timestamp_format": "%Y-%m-%d %H:%M:%S",
+  "required_parameters": [
+    "timestamp",
+    "temperature"
+  ]
+}
