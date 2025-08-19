@@ -2,7 +2,7 @@
 IEQ Analytics Module
 
 This module provides comprehensive Indoor Environmental Quality (IEQ) analysis capabilities,
-including statistical analysis, comfort assessment, and rule-based evaluation.
+including statistical analysis, comfort assessment based on EN16798-1 2019, and rule-based evaluation based on user-defined rules.
 """
 
 import json
@@ -26,7 +26,9 @@ class IEQAnalytics:
     
     def __init__(self, rules_config_path: Optional[Path] = None):
         """Initialize analytics engine."""
-        self.comfort_thresholds = self._load_comfort_thresholds()
+        config = self._load_comfort_thresholds()
+        self.comfort_thresholds = config.get("comfort_thresholds", {})
+        self.room_types = config.get("room_types", {})
         
         # Initialize rule-based analytics engine
         if rules_config_path is None:
@@ -40,25 +42,45 @@ class IEQAnalytics:
                 print(f"Warning: Could not load rules engine: {e}")
                 self.rules_engine = None
         
-    def _load_comfort_thresholds(self) -> Dict[str, Dict[str, Dict[str, float]]]:
-        """Load comfort thresholds based on EN 16798-1 standard."""
-        return {
-            "temperature": {
-                ComfortCategory.CATEGORY_I.value: {"min": 21.0, "max": 23.0},
-                ComfortCategory.CATEGORY_II.value: {"min": 20.0, "max": 24.0},
-                ComfortCategory.CATEGORY_III.value: {"min": 19.0, "max": 25.0},
-            },
-            "humidity": {
-                ComfortCategory.CATEGORY_I.value: {"min": 30.0, "max": 50.0},
-                ComfortCategory.CATEGORY_II.value: {"min": 25.0, "max": 60.0},
-                ComfortCategory.CATEGORY_III.value: {"min": 20.0, "max": 70.0},
-            },
-            "co2": {
-                ComfortCategory.CATEGORY_I.value: {"max": 550.0},
-                ComfortCategory.CATEGORY_II.value: {"max": 800.0},
-                ComfortCategory.CATEGORY_III.value: {"max": 1200.0},
+    def _load_comfort_thresholds(self, config_path: Optional[Path] = None) -> Dict[str, Any]:
+        """Load comfort thresholds and room types from EN 16798-1 config file."""
+        import yaml
+        if config_path is None:
+            config_path = Path(__file__).parent.parent / "config" / "en16798_thresholds.yaml"
+        try:
+            with open(config_path, "r") as f:
+                config = yaml.safe_load(f)
+            # Map category keys to enum values for internal use
+            thresholds = config.get("comfort_thresholds", {})
+            for param, categories in thresholds.items():
+                for cat in list(categories.keys()):
+                    if hasattr(ComfortCategory, cat):
+                        categories[getattr(ComfortCategory, cat).value] = categories.pop(cat)
+            config["comfort_thresholds"] = thresholds
+            return config
+        except Exception as e:
+            print(f"Warning: Could not load EN 16798-1 config: {e}")
+            # Fallback to hardcoded values if config fails
+            return {
+                "comfort_thresholds": {
+                    "temperature": {
+                        ComfortCategory.CATEGORY_I.value: {"min": 21.0, "max": 23.0},
+                        ComfortCategory.CATEGORY_II.value: {"min": 20.0, "max": 24.0},
+                        ComfortCategory.CATEGORY_III.value: {"min": 19.0, "max": 25.0},
+                    },
+                    "humidity": {
+                        ComfortCategory.CATEGORY_I.value: {"min": 30.0, "max": 50.0},
+                        ComfortCategory.CATEGORY_II.value: {"min": 25.0, "max": 60.0},
+                        ComfortCategory.CATEGORY_III.value: {"min": 20.0, "max": 70.0},
+                    },
+                    "co2": {
+                        ComfortCategory.CATEGORY_I.value: {"max": 550.0},
+                        ComfortCategory.CATEGORY_II.value: {"max": 800.0},
+                        ComfortCategory.CATEGORY_III.value: {"max": 1200.0},
+                    }
+                },
+                "room_types": {}
             }
-        }
     
     def analyze_room_data(self, ieq_data: IEQData) -> Dict[str, Any]:
         """Comprehensive analysis of a single room's IEQ data."""
@@ -96,7 +118,68 @@ class IEQAnalytics:
             except Exception as e:
                 analysis_results["rule_based_analysis"] = {"error": f"Rule analysis failed: {e}"}
                 analysis_results["en_standard_analysis"] = {"error": f"EN standard analysis failed: {e}"}
-        
+
+        # --- ACH metrics integration ---
+        try:
+            from .ventilation_rate_predictor import VentilationRatePredictor
+            co2_col = None
+            for col in ieq_data.data.columns:
+                if "co2" in col.lower():
+                    co2_col = col
+                    break
+            ach_metrics = {}
+            if co2_col:
+                predictor = VentilationRatePredictor(co2_col=co2_col)
+                ach_results = predictor.analyze(ieq_data.data)
+                # Use summarize_ach_statistics logic to compute metrics
+                ach_values = []
+                weights = []
+                for r in ach_results:
+                    ach = r.get('ventilation_rate_ach')
+                    n_points = len(r.get('values', []))
+                    if ach is not None and n_points > 1:
+                        ach_values.append(ach)
+                        weights.append(n_points)
+                if ach_values:
+                    ach_mean = float(np.average(ach_values, weights=weights))
+                    ach_median = float(np.median(ach_values))
+                    ach_std = float(np.sqrt(np.average((np.array(ach_values)-ach_mean)**2, weights=weights)))
+                    ach_min = float(np.min(ach_values))
+                    ach_max = float(np.max(ach_values))
+                    n_periods = len(ach_values)
+                    total_points = sum(weights)
+                    p_periods = min(n_periods / 20, 1.0)
+                    p_points = min(total_points / 100, 1.0)
+                    p_std = max(0, 1 - ach_std / 0.05)
+                    confidence_prob = round((0.4*p_periods + 0.4*p_points + 0.2*p_std), 2)
+                    if confidence_prob > 0.85:
+                        confidence = "High"
+                    elif confidence_prob > 0.6:
+                        confidence = "Medium"
+                    else:
+                        confidence = "Low"
+                    recommended_ach = 2.0
+                    ventilation_status = (
+                        f"Well ventilated (mean ACH {ach_mean:.2f} ≥ recommended {recommended_ach})"
+                        if ach_mean >= recommended_ach else
+                        f"Poorly ventilated (mean ACH {ach_mean:.2f} < recommended {recommended_ach})"
+                    )
+                    ach_metrics = {
+                        "ach_mean": ach_mean,
+                        "ach_median": ach_median,
+                        "ach_std": ach_std,
+                        "ach_min": ach_min,
+                        "ach_max": ach_max,
+                        "n_periods": n_periods,
+                        "total_points": total_points,
+                        "confidence": confidence,
+                        "confidence_prob": confidence_prob,
+                        "ventilation_status": ventilation_status
+                    }
+            analysis_results["ach_metrics"] = ach_metrics
+        except Exception as e:
+            analysis_results["ach_metrics"] = {"error": f"ACH calculation failed: {e}"}
+
         return analysis_results
     
     def _analyze_data_quality(self, ieq_data: IEQData) -> Dict[str, Any]:
@@ -125,14 +208,16 @@ class IEQAnalytics:
         if len(data) > 1:
             expected_freq = pd.Timedelta(hours=1)
             time_diffs = data.index[1:] - data.index[:-1]
-            gaps = time_diffs[time_diffs > expected_freq * 1.5]  # Allow 50% tolerance
             
-            for i, gap in enumerate(gaps):
-                gap_start = data.index[time_diffs == gap][0]
-                quality_metrics["missing_data_periods"].append({
-                    "start": gap_start.isoformat(),
-                    "duration_hours": gap.total_seconds() / 3600
-                })
+            # Find large gaps (more than 1.5 times expected frequency)
+            for i, time_diff in enumerate(time_diffs):
+                if time_diff > expected_freq * 1.5:
+                    # The gap starts at index i (before the large time difference)
+                    gap_start = data.index[i]
+                    quality_metrics["missing_data_periods"].append({
+                        "start": gap_start.isoformat(),
+                        "duration_hours": time_diff.total_seconds() / 3600
+                    })
         
         # Check for duplicate timestamps
         quality_metrics["duplicate_timestamps"] = data.index.duplicated().sum()
@@ -193,25 +278,23 @@ class IEQAnalytics:
             if col not in data.columns or data[col].count() == 0:
                 continue
             
-            series_data = data[col].dropna()
+            # Drop NA and keep index for alignment
+            valid_series = data[col].dropna()
             thresholds = self.comfort_thresholds[param]
-            
             compliance_results[param] = {}
-            
             for category, limits in thresholds.items():
                 if param == "co2":
                     # CO2 only has upper limit
-                    compliant = series_data <= limits["max"]
+                    compliant = valid_series <= limits["max"]
                 else:
                     # Temperature and humidity have ranges
-                    compliant = (series_data >= limits["min"]) & (series_data <= limits["max"])
-                
-                compliance_percentage = (compliant.sum() / len(series_data)) * 100
-                
+                    compliant = (valid_series >= limits["min"]) & (valid_series <= limits["max"])
+                # compliant and valid_series are already aligned - no need to reindex
+                compliance_percentage = (compliant.sum() / len(valid_series)) * 100
                 compliance_results[param][category] = {
                     "compliance_percentage": round(compliance_percentage, 2),
-                    "compliant_hours": compliant.sum(),
-                    "total_hours": len(series_data),
+                    "compliant_hours": int(compliant.sum()),
+                    "total_hours": int(len(valid_series)),
                     "thresholds": limits
                 }
         
@@ -569,7 +652,7 @@ class IEQAnalytics:
                 generated_plots["distributions"] = str(distribution_path)
             
         except Exception as e:
-            print(f"Error generating visualizations: {e}")
+            print(f"Error generating visualizations: {e}") #? We got an error 'date' to solve here
         
         return generated_plots
     
@@ -617,10 +700,51 @@ class IEQAnalytics:
                         row[f"{param}_mean"] = stats.get("mean", None)
                         row[f"{param}_std"] = stats.get("std", None)
                     
-                    # Add comfort compliance
+                    # Add comfort compliance for all EN 16798-1 categories
                     for param, categories in analysis.get("comfort_analysis", {}).items():
-                        category_ii = categories.get(ComfortCategory.CATEGORY_II.value, {})
-                        row[f"{param}_compliance_pct"] = category_ii.get("compliance_percentage", None)
+                        for category_name, category_data in categories.items():
+                            compliance_pct = category_data.get("compliance_percentage", None)
+                            compliant_hours = category_data.get("compliant_hours", None)
+                            total_hours = category_data.get("total_hours", None)
+                            non_compliant_hours = total_hours - compliant_hours if (total_hours and compliant_hours) else None
+                            
+                            # Clean category name for column headers
+                            clean_category = category_name.replace(" ", "_").lower()
+                            row[f"{param}_{clean_category}_compliance_pct"] = compliance_pct
+                            row[f"{param}_{clean_category}_compliant_hours"] = compliant_hours
+                            row[f"{param}_{clean_category}_non_compliant_hours"] = non_compliant_hours
+
+                    # Add ACH metrics
+                    ach_metrics = analysis.get("ach_metrics", {})
+                    row["ach_mean"] = ach_metrics.get("ach_mean", None)
+                    row["ach_median"] = ach_metrics.get("ach_median", None)
+                    row["ach_std"] = ach_metrics.get("ach_std", None)
+                    row["ach_min"] = ach_metrics.get("ach_min", None)
+                    row["ach_max"] = ach_metrics.get("ach_max", None)
+                    row["ach_confidence"] = ach_metrics.get("confidence", None)
+                    row["ach_confidence_prob"] = ach_metrics.get("confidence_prob", None)
+                    row["ach_ventilation_status"] = ach_metrics.get("ventilation_status", None)
+                    
+                    # Add custom analytics rules compliance
+                    rule_based_analysis = analysis.get("rule_based_analysis", {})
+                    comfort_compliance = rule_based_analysis.get("comfort_compliance", {})
+                    
+                    for rule_name, rule_data in comfort_compliance.items():
+                        if isinstance(rule_data, dict):
+                            # Clean rule name for column headers
+                            clean_rule_name = rule_name.replace(" ", "_").lower()
+                            compliance_rate = rule_data.get("compliance_rate", None)
+                            total_points = rule_data.get("total_points", None)
+                            compliant_points = rule_data.get("compliant_points", None)
+                            non_compliant_hours = rule_data.get("non_compliant_hours", None)
+                            
+                            # Convert compliance rate to percentage
+                            compliance_pct = compliance_rate * 100 if compliance_rate is not None else None
+                            
+                            row[f"{clean_rule_name}_compliance_pct"] = compliance_pct
+                            row[f"{clean_rule_name}_total_hours"] = total_points
+                            row[f"{clean_rule_name}_compliant_hours"] = compliant_points
+                            row[f"{clean_rule_name}_non_compliant_hours"] = non_compliant_hours
                     
                     summary_data.append(row)
                 

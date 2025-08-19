@@ -1,0 +1,384 @@
+# EN 16798-1 Standard Configuration with Opening Hours and Holiday Filtering
+en_16798_1:
+  temperature:
+    mode: bidirectional
+    seasonal_categories:
+      heating:
+        I:
+          lower: 21
+          upper: 23
+        II:
+          lower: 20
+          upper: 24
+        III:
+          lower: 19
+          upper: 25
+      non_heating:
+        I:
+          lower: 23
+          upper: 25
+        II:
+          lower: 22
+          upper: 26
+        III:
+          lower: 21
+          upper: 27
+
+  humidity:
+    mode: bidirectional
+    categories:
+      I:
+        lower: 30
+        upper: 50
+      II:
+        lower: 25
+        upper: 60
+      III:
+        lower: 20
+        upper: 70
+
+  co2:
+    mode: unidirectional_ascending
+    categories:
+      I:
+        upper: 550
+      II:
+        upper: 800
+      III:
+        upper: 1200
+
+  season_definitions:
+    heating:
+      months: [11, 12, 1, 2, 3]
+    non_heating:
+      months: [4, 5, 6, 7, 8, 9, 10]
+
+# Enhanced Analytics Configuration with Opening Hours and Holiday Filtering
+analytics:
+  # EN16798-1 compliant rules for school opening hours only
+  en16798_temp_cat_i_opening_hours:
+    description: "EN16798-1 Temperature Category I (21-23°C) - School opening hours"
+    feature: temperature
+    period: all_year
+    filter: school_opening_hours
+    mode: bidirectional
+    limits: 
+      upper: 23
+      lower: 21
+
+  en16798_temp_cat_ii_opening_hours:
+    description: "EN16798-1 Temperature Category II (20-24°C) - School opening hours"
+    feature: temperature
+    period: all_year
+    filter: school_opening_hours
+    mode: bidirectional
+    limits: 
+      upper: 24
+      lower: 20
+
+  en16798_temp_cat_iii_opening_hours:
+    description: "EN16798-1 Temperature Category III (19-25°C) - School opening hours"
+    feature: temperature
+    period: all_year
+    filter: school_opening_hours
+    mode: bidirectional
+    limits: 
+      upper: 25
+      lower: 19
+
+  en16798_humidity_cat_i_opening_hours:
+    description: "EN16798-1 Humidity Category I (30-50%) - School opening hours"
+    feature: humidity
+    period: all_year
+    filter: school_opening_hours
+    mode: bidirectional
+    limits: 
+      upper: 50
+      lower: 30
+
+  en16798_humidity_cat_ii_opening_hours:
+    description: "EN16798-1 Humidity Category II (25-60%) - School opening hours"
+    feature: humidity
+    period: all_year
+    filter: school_opening_hours
+    mode: bidirectional
+    limits: 
+      upper: 60
+      lower: 25
+
+  en16798_co2_cat_i_opening_hours:
+    description: "EN16798-1 CO2 Category I (<550 ppm) - School opening hours"
+    feature: co2
+    period: all_year
+    filter: school_opening_hours
+    mode: unidirectional_ascending
+    limit: 550
+
+  en16798_co2_cat_ii_opening_hours:
+    description: "EN16798-1 CO2 Category II (<800 ppm) - School opening hours"
+    feature: co2
+    period: all_year
+    filter: school_opening_hours
+    mode: unidirectional_ascending
+    limit: 800
+
+  en16798_co2_cat_iii_opening_hours:
+    description: "EN16798-1 CO2 Category III (<1200 ppm) - School opening hours"
+    feature: co2
+    period: all_year
+    filter: school_opening_hours
+    mode: unidirectional_ascending
+    limit: 1200
+
+  # Seasonal analysis for heating/non-heating periods
+  en16798_temp_cat_ii_heating_season:
+    description: "EN16798-1 Temperature Category II - Heating season (20-24°C)"
+    feature: temperature
+    period: heating_season
+    filter: school_opening_hours
+    mode: bidirectional
+    limits: 
+      upper: 24
+      lower: 20
+
+  en16798_temp_cat_ii_non_heating_season:
+    description: "EN16798-1 Temperature Category II - Non-heating season (22-26°C)"
+    feature: temperature
+    period: non_heating_season
+    filter: school_opening_hours
+    mode: bidirectional
+    limits: 
+      upper: 26
+      lower: 22
+
+  # Custom comfort rules for comparison
+  temp_comfort_danish_schools:
+    description: "Danish school temperature comfort (20-26°C, opening hours)"
+    feature: temperature
+    period: all_year
+    filter: school_opening_hours
+    mode: bidirectional
+    limits: 
+      upper: 26
+      lower: 20
+
+  co2_danish_guidelines:
+    description: "Danish CO2 guidelines for schools (<1000 ppm, opening hours)"
+    feature: co2
+    period: all_year
+    filter: school_opening_hours
+    mode: unidirectional_ascending
+    limit: 1000
+
+# Enhanced Period and Filter Definitions
+periods:
+  all_year:
+    months: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+  spring:
+    months: [3, 4, 5]
+  summer:
+    months: [6, 7, 8]
+  autumn:
+    months: [9, 10, 11]
+  winter:
+    months: [12, 1, 2]
+  heating_season:
+    months: [11, 12, 1, 2, 3]
+  non_heating_season:
+    months: [4, 5, 6, 7, 8, 9, 10]
+
+filters:
+  school_opening_hours:
+    hours: [8, 9, 10, 11, 12, 13, 14, 15]  # 8 AM to 4 PM
+    weekdays_only: true
+    exclude_holidays: true
+    exclude_weekends: true
+  
+  extended_opening_hours:
+    hours: [7, 8, 9, 10, 11, 12, 13, 14, 15, 16]  # 7 AM to 5 PM
+    weekdays_only: true
+    exclude_holidays: true
+    exclude_weekends: true
+  
+  non_opening_hours:
+    hours: [16, 17, 18, 19, 20, 21, 22, 23, 0, 1, 2, 3, 4, 5, 6, 7]
+    weekdays_only: false
+    exclude_holidays: false
+    exclude_weekends: false
+  
+  weekend_hours:
+    hours: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23]
+    weekdays_only: false
+    exclude_holidays: false
+    weekends_only: true
+  
+  morning:
+    hours: [8, 9, 10, 11]
+    weekdays_only: true
+    exclude_holidays: true
+  
+  afternoon:
+    hours: [12, 13, 14, 15]
+    weekdays_only: true
+    exclude_holidays: true
+  
+  evening:
+    hours: [16, 17, 18, 19, 20, 21]
+    weekdays_only: false
+    exclude_holidays: false
+  
+  all_hours:
+    hours: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23]
+    weekdays_only: false
+    exclude_holidays: false
+    exclude_weekends: false
+
+# Danish School Holiday Configuration
+holidays:
+  country: "Denmark"
+  custom_holidays:
+    # Summer holidays
+    - name: "Summer Holiday Start"
+      date: "2024-06-22"
+      end_date: "2024-08-12"
+    # Autumn holidays
+    - name: "Autumn Holiday"
+      date: "2024-10-14"
+      end_date: "2024-10-18"
+    # Christmas holidays
+    - name: "Christmas Holiday Start"
+      date: "2024-12-21"
+      end_date: "2025-01-06"
+    # Winter holidays
+    - name: "Winter Holiday"
+      date: "2024-02-12"
+      end_date: "2024-02-16"
+    # Easter holidays
+    - name: "Easter Holiday"
+      date: "2024-03-25"
+      end_date: "2024-04-01"
+    # Great Prayer Day (Store Bededag)
+    - name: "Store Bededag"
+      date: "2024-04-26"
+    # Ascension Day (Kristi Himmelfartsdag)
+    - name: "Kristi Himmelfartsdag"
+      date: "2024-05-09"
+    # Constitution Day (Grundlovsdag)
+    - name: "Grundlovsdag"
+      date: "2024-06-05"
+    # Various teacher planning days
+    - name: "Teacher Planning Day"
+      date: "2024-11-01"
+    - name: "Teacher Planning Day"
+      date: "2024-01-15"
+
+# Time zone configuration
+timezone: "Europe/Copenhagen"
+
+# EN16798-1 Compliance Rules with Opening Hours Filtering
+rules:
+  en16798_cat_i_temp_opening_hours:
+    description: "EN16798-1 Category I Temperature Compliance (21-23°C) during school opening hours"
+    category: "EN16798-1 Category I"
+    parameter: "temperature"
+    period: "all_year"
+    filter: "school_opening_hours"
+    rule:
+      "and": [
+        {">=": [{"var": "temperature"}, 21]},
+        {"<=": [{"var": "temperature"}, 23]}
+      ]
+  
+  en16798_cat_ii_temp_opening_hours:
+    description: "EN16798-1 Category II Temperature Compliance (20-24°C) during school opening hours"
+    category: "EN16798-1 Category II"
+    parameter: "temperature"
+    period: "all_year"
+    filter: "school_opening_hours"
+    rule:
+      "and": [
+        {">=": [{"var": "temperature"}, 20]},
+        {"<=": [{"var": "temperature"}, 24]}
+      ]
+  
+  en16798_cat_iii_temp_opening_hours:
+    description: "EN16798-1 Category III Temperature Compliance (19-25°C) during school opening hours"
+    category: "EN16798-1 Category III"
+    parameter: "temperature"
+    period: "all_year"
+    filter: "school_opening_hours"
+    rule:
+      "and": [
+        {">=": [{"var": "temperature"}, 19]},
+        {"<=": [{"var": "temperature"}, 25]}
+      ]
+  
+  en16798_cat_i_humidity_opening_hours:
+    description: "EN16798-1 Category I Humidity Compliance (30-50% RH) during school opening hours"
+    category: "EN16798-1 Category I"
+    parameter: "humidity"
+    period: "all_year"
+    filter: "school_opening_hours"
+    rule:
+      "and": [
+        {">=": [{"var": "humidity"}, 30]},
+        {"<=": [{"var": "humidity"}, 50]}
+      ]
+  
+  en16798_cat_ii_humidity_opening_hours:
+    description: "EN16798-1 Category II Humidity Compliance (25-60% RH) during school opening hours"
+    category: "EN16798-1 Category II"
+    parameter: "humidity"
+    period: "all_year"
+    filter: "school_opening_hours"
+    rule:
+      "and": [
+        {">=": [{"var": "humidity"}, 25]},
+        {"<=": [{"var": "humidity"}, 60]}
+      ]
+  
+  en16798_cat_iii_humidity_opening_hours:
+    description: "EN16798-1 Category III Humidity Compliance (20-70% RH) during school opening hours"
+    category: "EN16798-1 Category III"
+    parameter: "humidity"
+    period: "all_year"
+    filter: "school_opening_hours"
+    rule:
+      "and": [
+        {">=": [{"var": "humidity"}, 20]},
+        {"<=": [{"var": "humidity"}, 70]}
+      ]
+  
+  en16798_cat_i_co2_opening_hours:
+    description: "EN16798-1 Category I CO2 Compliance (≤750 ppm) during school opening hours"
+    category: "EN16798-1 Category I"
+    parameter: "co2"
+    period: "all_year"
+    filter: "school_opening_hours"
+    rule:
+      {"<=": [{"var": "co2"}, 750]}
+  
+  en16798_cat_ii_co2_opening_hours:
+    description: "EN16798-1 Category II CO2 Compliance (≤900 ppm) during school opening hours"
+    category: "EN16798-1 Category II"
+    parameter: "co2"
+    period: "all_year"
+    filter: "school_opening_hours"
+    rule:
+      {"<=": [{"var": "co2"}, 900]}
+  
+  en16798_cat_iii_co2_opening_hours:
+    description: "EN16798-1 Category III CO2 Compliance (≤1200 ppm) during school opening hours"
+    category: "EN16798-1 Category III"
+    parameter: "co2"
+    period: "all_year"
+    filter: "school_opening_hours"
+    rule:
+      {"<=": [{"var": "co2"}, 1200]}
+
+# Quality thresholds for EN16798-1 compliance
+quality_thresholds:
+  excellent: 95.0  # >95% compliance with Category I
+  good: 85.0       # >85% compliance with Category II  
+  acceptable: 70.0 # >70% compliance with Category III
+  poor: 0.0        # Below 70% compliance

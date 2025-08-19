@@ -79,3 +79,9 @@ cython_debug/
 
 # Data files
 data/
+output/
+
+# Environment variables
+.env
+
+.DS_Store

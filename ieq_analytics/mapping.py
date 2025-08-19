@@ -75,14 +75,19 @@ class DataMapper:
         """Extract building name hint from filename."""
         # Common patterns for building names in filenames
         patterns = [
-            r'^([^_]+)_',  # First part before underscore
+            r'(Fl[øo]ng[\s_]*Skole)',  # Fløng Skole variants
+            r'(Ole[\s_]*R[øo]mer[\s\-_]*Skolen?)',  # Ole Rømer-Skolen variants
+            r'(Reerslev)',  # Reerslev
+            r'^([^_]+(?:[\s_]+[^_]+)*?)_',  # General pattern: words before first major underscore
             r'([A-Za-z]+(?:\s+[A-Za-z]+)*?)_',  # Word sequence before underscore
         ]
         
         for pattern in patterns:
-            match = re.search(pattern, filename)
+            match = re.search(pattern, filename, re.IGNORECASE)
             if match:
                 building_hint = match.group(1).replace('_', ' ').strip()
+                # Clean up the building name
+                building_hint = re.sub(r'\s+', ' ', building_hint)  # Normalize spaces
                 if len(building_hint) > 2:  # Avoid very short hints
                     return building_hint
         
@@ -90,17 +95,28 @@ class DataMapper:
     
     def _extract_room_hint(self, filename: str) -> Optional[str]:
         """Extract room name hint from filename."""
-        # Common patterns for room identifiers
+        # Common patterns for room identifiers - ordered by specificity
         patterns = [
-            r'(?:sal|room|klasse|classe)[\s_]*([0-9A-Za-z]+)',  # Room number patterns
-            r'([0-9]+\.?[0-9]*)',  # Decimal room numbers
+            # Specific patterns for different file formats
+            r'(?:sal|room)[\s_]*([0-9]+\.[0-9]+)',  # sal_0.078, sal_0.086
+            r'(?:klasse|classe)[\s_]*([0-9]+)',  # Klasse_101, Klasse_142
+            r'(?:stue|stueplan)[\s_]*([0-9]+\.[0-9]+)',  # Stue_0.016, Stue_0.077
+            r'(?:sal|room)[\s_]*([0-9]+)',  # sal_11, sal_34
+            # More general decimal patterns
+            r'([0-9]+\.[0-9]+)',  # Decimal room numbers (e.g., 0.078, 0.086)
+            r'_([0-9]+)_processed',  # Numbers before _processed
+            r'([0-9]+)',  # Any integer room numbers
+            # Alphanumeric room codes
             r'([A-Z]?[0-9]+[A-Z]?)',  # Alphanumeric room codes
         ]
         
         for pattern in patterns:
             matches = re.findall(pattern, filename, re.IGNORECASE)
             if matches:
-                return matches[-1]  # Return the last match (usually most specific)
+                # Return the first meaningful match
+                for match in matches:
+                    if match and len(match) > 0:
+                        return match
         
         return None
     
