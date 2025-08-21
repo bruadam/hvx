@@ -117,13 +117,6 @@ ieq-analytics/
 │               ├── _map_features() → feature mapping
 │               └── _process_periods() → seasonal processing
 │
-├── 🌦️ **Climate Integration**
-│   └── **Climate Merge** (climate_merge.py)
-│       ├── ClimateParameter(Enum) → climate data types
-│       ├── load_and_pivot_climate_data() → climate data loading
-│       ├── merge_and_analyze() → indoor-outdoor correlation
-│       └── correlation_analysis() → climate influence analysis
-│
 └── 💻 **Command Line Interface**
     └── **CLI Commands** (cli.py)
         ├── 🗂️ **Data Management**

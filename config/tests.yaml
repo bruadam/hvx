@@ -1,4 +1,4 @@
-# Analytics Configuration - Comprehensive Analysis
+# Tests Configuration - Comprehensive Analysis
 analytics:
   # Temperature analyses - All periods and filters
   temp_comfort_all_year_opening:
@@ -85,6 +85,23 @@ analytics:
     mode: unidirectional_ascending
     limit: 26
 
+  # Additional temperature limits
+  temp_27_all_year_opening:
+    description: "Temperatur <27°C (hele året, åbningstid)"
+    feature: temperature
+    period: all_year
+    filter: opening_hours
+    mode: unidirectional_ascending
+    limit: 27
+
+  temp_27_summer_opening:
+    description: "Temperatur <27°C (sommer, åbningstid)"
+    feature: temperature
+    period: summer
+    filter: opening_hours
+    mode: unidirectional_ascending
+    limit: 27
+
   # CO2 analyses - All periods and filters
   co2_1000_all_year_opening:
     description: "CO2 <1000ppm (hele året, åbningstid)"
@@ -107,6 +124,15 @@ analytics:
     feature: co2
     period: all_year
     filter: opening_hours
+    mode: unidirectional_ascending
+    limit: 2000
+
+  # Additional CO2 limits for non-opening hours
+  co2_2000_all_year_non_opening:
+    description: "CO2 <2000ppm (hele året, uden for åbningstid)"
+    feature: co2
+    period: all_year
+    filter: non_opening_hours
     mode: unidirectional_ascending
     limit: 2000
 
@@ -166,17 +192,6 @@ analytics:
     mode: unidirectional_ascending
     limit: 1000
 
-  # Humidity analyses
-  humidity_comfort_all_year:
-    description: "Fugtighed 30-60% (hele året)"
-    feature: humidity
-    period: all_year
-    filter: all_hours
-    mode: bidirectional
-    limits:
-      upper: 60
-      lower: 30
-
   # Combined analyses using json-logic
   comfort_optimal_opening:
     description: "Optimal comfort (temperatur 21-24°C og CO2 <800ppm, åbningstid)"
@@ -188,7 +203,7 @@ analytics:
         - and:
             - ">=": [{"var": "temperature"}, 21]
             - "<=": [{"var": "temperature"}, 24]
-        - "<": [{"var": "co2"}, 800]
+        - "<": [{"var": "co2"}, 1000]
 
 # Period and Filter Definitions
 periods:
@@ -239,15 +254,25 @@ filters:
 
 # Holiday Configuration
 holidays:
-  country: "Denmark"
+  country: "DK"
   custom_holidays:
+    # Summer holidays
     - name: "Summer Holiday Start"
-      date: "2024-07-01"
-    - name: "Summer Holiday End"
-      date: "2024-08-15"
+      start_date: "2024-06-29"
+      end_date: "2024-08-11"
+    # Autumn holidays
     - name: "Autumn Holiday"
-      date: "2024-10-14"
+      start_date: "2024-10-12"
+      end_date: "2024-10-20"
+    # Christmas holidays
     - name: "Christmas Holiday Start"
-      date: "2024-12-23"
-    - name: "Christmas Holiday End"
-      date: "2025-01-03"
+      start_date: "2024-12-21"
+      end_date: "2025-01-03"
+    # Winter holidays
+    - name: "Winter Holiday"
+      start_date: "2024-02-17"
+      end_date: "2024-02-25"
+    # Easter holidays
+    - name: "Easter Holiday"
+      start_date: "2024-03-23"
+      end_date: "2024-04-01"

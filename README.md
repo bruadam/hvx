@@ -40,9 +40,6 @@ cd ieq-analytics/analytics
 
 # Install dependencies
 pip install -r requirements.txt
-
-# Optional: Install additional packages for enhanced functionality
-pip install json-logic holidays matplotlib seaborn
 ```
 
 ## Quick Start
@@ -101,7 +98,7 @@ standard_rule = RuleBuilder.create_comfort_rule(
 )
 
 # Initialize analytics engine with rules
-analytics = IEQAnalytics(rules_config_path="config/analytics_rules.yaml")
+analytics = IEQAnalytics(rules_config_path="config/tests.yaml")
 
 # Analyze with rules
 results = analytics.analyze_room_data(ieq_data)
@@ -110,21 +107,109 @@ rule_results = results['rule_based_analysis']
 
 ### 3. CLI Usage
 
+The IEQ Analytics CLI provides a comprehensive command-line interface with project management, data processing, analysis, and reporting capabilities.
+
+#### 🚀 Quick Start with CLI
+
 ```bash
-# Interactive column mapping
-python -m ieq_analytics.cli mapping --input-file data.csv --interactive
+# Initialize a new project workspace
+python -m ieq_analytics.cli project init --name "my-ieq-study" --template basic
 
-# Analyze a room
-python -m ieq_analytics.cli analyze --input-file processed_data.csv --room-id classroom1
+# Check project status and get recommendations
+python -m ieq_analytics.cli project status
 
-# Run complete pipeline
-python -m ieq_analytics.cli run --input-dir data/ --output-dir results/
+# Map raw CSV files to standardized format (interactive)
+python -m ieq_analytics.cli mapping --interactive
 
-# Generate visualizations
-python -m ieq_analytics.cli analyze --input-file data.csv --visualizations --output-dir plots/
+# Run comprehensive analysis
+python -m ieq_analytics.cli analyze --generate-plots
+
+# Generate professional reports
+python -m ieq_analytics.cli report generate --format pdf --template executive
 ```
 
-## Demo
+#### 📁 Project Management
+
+```bash
+# Initialize different project types
+python -m ieq_analytics.cli project init --name "office-study" --template advanced
+python -m ieq_analytics.cli project init --name "research-project" --template research
+
+# Monitor project progress
+python -m ieq_analytics.cli project status
+
+# Configure project settings interactively
+python -m ieq_analytics.cli project config
+```
+
+#### 🗂️ Data Processing
+
+```bash
+# Interactive column mapping with batch processing
+python -m ieq_analytics.cli mapping --data-dir-path data/raw/ --interactive --batch-size 20
+
+# Inspect CSV file structure before mapping
+python -m ieq_analytics.cli inspect --data-dir-path data/raw/ --output-format table
+
+# Automated mapping with configuration
+python -m ieq_analytics.cli mapping --no-interactive --config-path config/mapping_config.json
+```
+
+#### 🔬 Analysis & Visualization
+
+```bash
+# Comprehensive analysis with multiple export formats
+python -m ieq_analytics.cli analyze --parallel --export-formats json csv excel
+
+# Analysis with custom rules configuration
+python -m ieq_analytics.cli analyze --rules-config config/custom_rules.yaml --generate-plots
+
+# Generate visualizations only
+python -m ieq_analytics.cli analyze --generate-plots --no-analysis
+```
+
+#### 📊 Report Generation
+
+```bash
+# Executive summary report
+python -m ieq_analytics.cli report generate --template executive --format pdf
+
+# Technical report with AI-powered chart analysis
+python -m ieq_analytics.cli report generate --template technical --ai-analysis --interactive-review
+
+# Quick HTML report
+python -m ieq_analytics.cli report generate --format html --include-plots
+```
+
+#### 🚀 Complete Pipeline Automation
+
+```bash
+# Automated pipeline for production
+python -m ieq_analytics.cli pipeline --skip-interactive --parallel-analysis
+
+# Custom pipeline with specific directories
+python -m ieq_analytics.cli pipeline --source-dir custom_data/ --output-dir results/
+```
+
+#### 🔍 Advanced Usage
+
+```bash
+# Detailed project status with metrics
+python -m ieq_analytics.cli project status
+
+# Export inspection results
+python -m ieq_analytics.cli inspect --export inspection_results.json
+
+# Initialize configuration templates
+python -m ieq_analytics.cli init-config --config-path custom_config.json
+
+# Run analysis with custom parameters
+python -m ieq_analytics.cli analyze --buildings-metadata metadata.json --parallel
+```
+
+## Demo & Getting Started
+
+### Quick Demo
 
 Run the comprehensive demo to see all features:
 
@@ -132,11 +217,204 @@ Run the comprehensive demo to see all features:
 python3 demo.py
 ```
 
+### CLI Demo
+
+Try the CLI with sample commands:
+
+```bash
+# Initialize a demo project
+python -m ieq_analytics.cli project init --name "demo-project" --template basic
+
+# Check project status
+python -m ieq_analytics.cli project status
+
+# Inspect sample data (if available)
+python -m ieq_analytics.cli inspect --data-dir-path data/raw/
+
+# Run complete pipeline (if data is available)
+python -m ieq_analytics.cli pipeline
+```
+
+### Step-by-Step Tutorial
+
+1. **Project Setup**:
+   ```bash
+   python -m ieq_analytics.cli project init --name "my-ieq-analysis" --template research
+   cd my-ieq-analysis
+   ```
+
+2. **Add Your Data**:
+   ```bash
+   # Copy your CSV files to data/raw/
+   cp /path/to/your/sensor_data*.csv data/raw/
+   ```
+
+3. **Check Status**:
+   ```bash
+   python -m ieq_analytics.cli project status
+   ```
+
+4. **Map Your Data**:
+   ```bash
+   python -m ieq_analytics.cli mapping --interactive
+   ```
+
+5. **Run Analysis**:
+   ```bash
+   python -m ieq_analytics.cli analyze --generate-plots --parallel
+   ```
+
+6. **Generate Report**:
+   ```bash
+   python -m ieq_analytics.cli report generate --format pdf --template executive
+   ```
+
 This will demonstrate:
-- Sample data generation
-- Complete analytics pipeline
-- Rule-based evaluation
-- CLI usage examples
+- Complete project workspace setup
+- Interactive data mapping workflow
+- Comprehensive analytics pipeline
+- Professional report generation
+- Advanced CLI features and automation
+
+## CLI Command Reference
+
+### Command Structure
+
+```bash
+ieq-analytics [OPTIONS] COMMAND [ARGS]...
+```
+
+#### Available Commands
+
+| Command | Description | Example |
+|---------|-------------|---------|
+| `project` | Project & workspace management | `project init --name study` |
+| `mapping` | Data mapping & processing | `mapping --interactive` |
+| `analyze` | Comprehensive IEQ analysis | `analyze --parallel` |
+| `inspect` | Data structure inspection | `inspect --export results.json` |
+| `report` | Report generation | `report generate --format pdf` |
+| `pipeline` | Complete automated pipeline | `pipeline --parallel-analysis` |
+| `init-config` | Configuration template creation | `init-config` |
+
+#### Project Commands
+
+```bash
+# Project initialization and management
+ieq-analytics project init [OPTIONS]
+  --name TEXT           Project name [required]
+  --description TEXT    Project description
+  --template CHOICE     Project template (basic/advanced/research)
+
+# Project status monitoring  
+ieq-analytics project status
+
+# Configuration management
+ieq-analytics project config [OPTIONS]
+  --config-type CHOICE  Configuration type (mapping/analytics/all)
+```
+
+#### Data Processing Commands
+
+```bash
+# Data mapping
+ieq-analytics mapping [OPTIONS]
+  --data-dir-path PATH         Input directory
+  --config-path PATH           Mapping configuration
+  --output-dir PATH            Output directory
+  --interactive/--no-interactive  Interactive mapping mode
+  --room-tag TEXT              Room tag to apply
+  --batch-size INTEGER         Batch processing size
+
+# Analysis
+ieq-analytics analyze [OPTIONS]
+  --data-dir PATH              Mapped data directory
+  --output-dir PATH            Output directory
+  --buildings-metadata PATH    Buildings metadata file
+  --rules-config PATH          Analytics rules configuration
+  --export-formats CHOICE     Export formats (json/csv/excel/pdf)
+  --generate-plots/--no-plots  Generate visualizations
+  --parallel/--sequential      Processing mode
+
+# Data inspection
+ieq-analytics inspect [OPTIONS]
+  --data-dir-path PATH         Directory to inspect
+  --output-format CHOICE       Output format (table/json/yaml)
+  --export PATH                Export results to file
+```
+
+#### Report Generation Commands
+
+```bash
+# Generate reports
+ieq-analytics report generate [OPTIONS]
+  --analysis-dir PATH          Analysis results directory
+  --output-dir PATH            Report output directory
+  --format CHOICE              Report format (html/pdf/markdown)
+  --template CHOICE            Report template (executive/technical/research)
+  --include-plots/--no-plots   Include visualization plots
+  --ai-analysis/--no-ai-analysis        AI-powered chart analysis
+  --interactive-review/--no-interactive-review  Interactive AI review
+```
+
+#### Pipeline Commands
+
+```bash
+# Complete automation
+ieq-analytics pipeline [OPTIONS]
+  --source-dir PATH            Source directory with raw data
+  --output-dir PATH            Output directory
+  --skip-interactive           Skip interactive steps
+  --parallel-analysis          Enable parallel processing
+```
+
+#### Global Options
+
+```bash
+--workspace PATH    Workspace directory (default: current directory)
+--version          Show version information
+--help             Show help message
+```
+
+## Project Workspace Structure
+
+When you initialize a project with `ieq-analytics project init`, the following workspace structure is created:
+
+```
+ieq-analytics-project/
+├── 📁 config/                    # Configuration files
+│   ├── project.json             # Project metadata
+│   ├── mapping_config.json      # Data mapping configuration
+│   ├── tests.yaml     # Custom analytics rules
+│   └── en16798_thresholds.yaml  # EN standard thresholds
+├── 📁 data/                     # Data directories
+│   ├── raw/                     # Original CSV files (place your data here)
+│   ├── mapped/                  # Standardized data (auto-generated)
+│   ├── climate/                 # External climate data (optional)
+│   └── buildings_metadata.json  # Building/room metadata (auto-generated)
+├── 📁 output/                   # Analysis results
+│   ├── analysis/                # Analysis results (JSON/CSV)
+│   ├── reports/                 # Generated reports (PDF/HTML)
+│   └── visualizations/          # Plots and charts
+├── 📁 scripts/                  # Custom analysis scripts (optional)
+├── 📁 docs/                     # Project documentation (optional)
+└── .ieq_pipeline_state.json     # Pipeline state tracking (auto-generated)
+```
+
+### Recommended Workflow
+
+1. **📁 Initialize Project**: `ieq-analytics project init --name "my-study"`
+2. **📥 Add Data**: Copy your CSV files to `data/raw/`
+3. **🗂️ Map Data**: `ieq-analytics mapping --interactive`
+4. **🔬 Analyze**: `ieq-analytics analyze --generate-plots`
+5. **📊 Generate Reports**: `ieq-analytics report generate --format pdf`
+
+Or run the complete pipeline: `ieq-analytics pipeline`
+
+### Project Templates
+
+- **Basic**: Standard IEQ analysis with common parameters
+- **Advanced**: Extended analysis with custom rules and thresholds
+- **Research**: Full EN 16798-1 compliance with detailed documentation
 
 ## Configuration
 
@@ -186,7 +464,7 @@ ieq_analytics/
 ├── utils.py             # Utility functions (correlation sanitization)
 ├── cli.py               # Command-line interface
 └── config/
-    ├── analytics_rules.yaml    # Rule definitions
+    ├── tests.yaml    # Rule definitions
     └── mapping_config.json     # Column mapping configuration
 ```
 
@@ -282,15 +560,49 @@ Intelligent column mapping for CSV files.
 
 ## Testing
 
+### Basic Testing
+
 ```bash
 # Run the demo
 python3 demo.py
 
-# Test CLI commands
+# Test CLI installation
 python -m ieq_analytics.cli --help
 
-# Test with sample data
+# Test package import
 python -c "from ieq_analytics import IEQAnalytics; print('✅ Import successful')"
+```
+
+### CLI Testing
+
+```bash
+# Test project initialization
+python -m ieq_analytics.cli project init --name "test-project" --template basic
+
+# Test project status
+python -m ieq_analytics.cli project status
+
+# Test data inspection (with sample data)
+python -m ieq_analytics.cli inspect --data-dir-path data/raw/ --output-format table
+
+# Test configuration creation
+python -m ieq_analytics.cli init-config
+
+# Test complete pipeline (if data available)
+python -m ieq_analytics.cli pipeline --skip-interactive
+```
+
+### Validation Commands
+
+```bash
+# Check CLI version
+python -m ieq_analytics.cli --version
+
+# Validate workspace structure
+python -m ieq_analytics.cli project status
+
+# Test report generation capabilities
+python -m ieq_analytics.cli report generate --help
 ```
 
 ## Advanced Features

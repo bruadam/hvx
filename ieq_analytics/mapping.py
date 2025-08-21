@@ -10,7 +10,7 @@ import pandas as pd
 import click
 
 from .models import Building, Room, IEQData, ColumnMapping, MappingConfig
-from .enums import IEQParameter, DEFAULT_COLUMN_MAPPINGS, RoomType
+from .enums import IEQParameter, DEFAULT_COLUMN_MAPPINGS, RoomType, BUILDING_TYPE_PATTERNS, ROOM_TYPE_PATTERNS
 
 
 class DataMapper:
@@ -176,7 +176,7 @@ class DataMapper:
         
         return mapping
     
-    def map_file(self, file_path: Path, column_mapping: Dict[str, str]) -> Optional[IEQData]:
+    def map_file(self, file_path: Path, column_mapping: Dict[str, str], mapping_config: Optional[ColumnMapping] = None) -> Optional[IEQData]:
         """Map a single CSV file to IEQ data format."""
         try:
             # Read the CSV file
@@ -204,6 +204,8 @@ class DataMapper:
             try:
                 timestamps = pd.to_datetime(df[timestamp_col])
                 mapped_df = mapped_df.set_index(timestamps)
+                # Rename the index to 'timestamp' for consistency
+                mapped_df.index.name = 'timestamp'
             except Exception as e:
                 raise ValueError(f"Could not parse timestamps in {file_path}: {e}")
             
@@ -233,12 +235,18 @@ class DataMapper:
             
             # Create room
             room_id = f"{building_id}_{room_name}"
+            # Use configured room type if available, otherwise infer from building and room name
+            if mapping_config and mapping_config.room_type:
+                room_type = mapping_config.room_type
+            else:
+                room_type = self._infer_room_type(building_name, room_name)
+            
             room = Room(
                 id=room_id,
                 name=room_name,
                 building_id=building_id,
                 floor=None,
-                room_type=RoomType.OTHER,
+                room_type=room_type,
                 area_m2=None,
                 volume_m3=None,
                 capacity_people=None
@@ -283,9 +291,40 @@ class DataMapper:
         hour_intervals = time_diffs == pd.Timedelta(hours=1)
         return hour_intervals.sum() / len(time_diffs) > 0.8  # 80% threshold
     
+    def _infer_room_type(self, building_name: str, room_name: str) -> RoomType:
+        """Infer room type based on building name and room patterns using centralized patterns."""
+        building_lower = building_name.lower()
+        room_lower = room_name.lower()
+        
+        # First, check for specific room type patterns in room name
+        for room_type_value, patterns in ROOM_TYPE_PATTERNS.items():
+            if any(pattern in room_lower for pattern in patterns):
+                # Convert string value back to enum
+                for room_type in RoomType:
+                    if room_type.value == room_type_value:
+                        return room_type
+        
+        # Then, infer based on building type patterns
+        # School buildings - default to classroom
+        if any(pattern in building_lower for pattern in BUILDING_TYPE_PATTERNS.get("school", [])):
+            return RoomType.CLASSROOM
+        
+        # Office buildings - default to office
+        if any(pattern in building_lower for pattern in BUILDING_TYPE_PATTERNS.get("office", [])):
+            return RoomType.OFFICE
+        
+        # Hospital buildings - default to other (could be extended with medical room types)
+        if any(pattern in building_lower for pattern in BUILDING_TYPE_PATTERNS.get("hospital", [])):
+            return RoomType.OTHER
+        
+        # Default fallback
+        return RoomType.OTHER
+    
     def _create_building_id(self, building_name: str) -> str:
         """Create a standardized building ID."""
-        return re.sub(r'[^a-zA-Z0-9]', '_', building_name.lower())
+        # Preserve Danish/Norwegian characters (øæå) and other common European characters
+        # Only replace spaces and special punctuation with underscores
+        return re.sub(r'[^\w\øæåÆØÅ]', '_', building_name.lower())
     
     def process_directory(
         self, 
@@ -339,7 +378,7 @@ class DataMapper:
                     continue
             
             # Process the file
-            ieq_data = self.map_file(file_path, column_mapping)
+            ieq_data = self.map_file(file_path, column_mapping, existing_mapping)
             
             if ieq_data:
                 processed_data.append(ieq_data)

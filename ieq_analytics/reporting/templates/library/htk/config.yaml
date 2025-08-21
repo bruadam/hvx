@@ -1,0 +1,248 @@
+# HTK (Høje-Taastrup Kommune) Report Template Configuration
+
+template:
+  id: "htk_report"
+  name: "Høje-Taastrup Kommune Report"
+  description: "Comprehensive building performance analysis for Høje-Taastrup Kommune"
+  category: "municipal"
+  version: "1.0.0"
+  author: "IEQ Analytics"
+
+# Report sections
+sections:
+  - id: "executive_summary"
+    name: "Executive Summary"
+    description: "High-level overview of all buildings"
+    required: true
+    charts: ["performance_overview", "building_comparison"]
+    
+  - id: "data_quality"
+    name: "Data Quality Assessment"
+    description: "Data quality metrics for each location"
+    required: true
+    charts: ["data_completeness", "data_quality_table"]
+    
+  - id: "building_analysis"
+    name: "Building Analysis"
+    description: "Detailed analysis per building"
+    required: true
+    repeatable: true  # Will be repeated for each building
+    charts: ["building_performance", "top_issues_rooms", "compliance_overview"]
+    subsections:
+      - id: "room_analysis"
+        name: "Room Analysis"
+        description: "Individual room performance"
+        repeatable: true  # Will be repeated for each room
+        charts: ["room_temperature_co2", "seasonal_analysis", "daily_patterns"]
+        
+  - id: "recommendations"
+    name: "Recommendations"
+    description: "Improvement recommendations per building"
+    required: true
+    charts: ["recommendation_priorities", "cost_benefit"]
+
+# Chart configurations specific to HTK requirements
+charts:
+  # Executive Summary Charts
+  performance_overview:
+    type: "performance_overview"
+    title: "Overall Performance Overview"
+    config:
+      metrics: ["co2_compliance", "temperature_compliance", "comfort_score"]
+      thresholds:
+        co2: 1000
+        temperature_min: 20
+        temperature_max: 26
+    
+  building_comparison:
+    type: "building_comparison"
+    title: "Building Performance Comparison"
+    config:
+      metrics: ["co2_avg", "temperature_avg", "compliance_rate"]
+      chart_type: "bar"
+    
+  # Data Quality Charts
+  data_completeness:
+    type: "data_quality"
+    title: "Data Completeness by Building"
+    config:
+      chart_type: "heatmap"
+      time_resolution: "daily"
+      
+  data_quality_table:
+    type: "table"
+    title: "Data Quality Summary"
+    config:
+      columns: ["building", "data_completeness", "missing_periods", "quality_score"]
+      
+  # Building Analysis Charts
+  building_performance:
+    type: "performance_metrics"
+    title: "Building Performance Metrics"
+    config:
+      metrics: ["co2_compliance", "temperature_compliance"]
+      periods: ["all_year", "opening_hours", "non_opening_hours"]
+      
+  top_issues_rooms:
+    type: "ranking"
+    title: "Rooms with Most Issues"
+    config:
+      ranking_by: ["co2_violations", "temperature_violations"]
+      top_n: 10
+      chart_type: "horizontal_bar"
+      
+  compliance_overview:
+    type: "compliance_summary"
+    title: "Compliance Overview"
+    config:
+      standards: ["co2_1000_all_year_opening", "temp_comfort_all_year_opening"]
+      chart_type: "gauge"
+      
+  # Room Analysis Charts
+  room_temperature_co2:
+    type: "time_series"
+    title: "Temperature and CO2 Trends"
+    config:
+      metrics: ["temperature", "co2"]
+      time_periods: ["all_year", "opening_hours", "non_opening_hours"]
+      chart_type: "line"
+      thresholds:
+        co2: [1000, 2000]
+        temperature: [20, 26]
+        
+  seasonal_analysis:
+    type: "seasonal_patterns"
+    title: "Seasonal Performance Analysis"
+    config:
+      seasons: ["spring", "summer", "autumn", "winter"]
+      metrics: ["temperature", "co2"]
+      chart_type: "box_plot"
+      
+  daily_patterns:
+    type: "daily_distribution"
+    title: "Daily Distribution Patterns"
+    config:
+      time_resolution: "hour"
+      metrics: ["temperature", "co2"]
+      show_bounds: true  # Show upper and lower bounds
+      chart_type: "line_with_bounds"
+      
+  # Trend Charts for Non-Compliant Hours
+  non_compliant_opening_hours:
+    type: "compliance_timeline"
+    title: "Non-Compliant Hours (Opening Hours)"
+    config:
+      filter: "opening_hours"
+      metrics: ["co2", "temperature"]
+      thresholds:
+        co2: 1000
+        temperature: [20, 26]
+      chart_type: "scatter"
+      
+  non_compliant_non_opening_hours:
+    type: "compliance_timeline"
+    title: "Non-Compliant Hours (Non-Opening Hours)"
+    config:
+      filter: "non_opening_hours"
+      metrics: ["co2", "temperature"]
+      thresholds:
+        co2: 1000
+        temperature: [20, 26]
+      chart_type: "scatter"
+      
+  # Recommendation Charts
+  recommendation_priorities:
+    type: "priority_matrix"
+    title: "Improvement Priority Matrix"
+    config:
+      x_axis: "impact"
+      y_axis: "effort"
+      bubble_size: "cost"
+      
+  cost_benefit:
+    type: "cost_benefit_analysis"
+    title: "Cost-Benefit Analysis"
+    config:
+      chart_type: "bubble"
+
+# Filter configurations
+filters:
+  time_periods:
+    all_year:
+      name: "All Year"
+      months: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+    seasons:
+      spring: [3, 4, 5]
+      summer: [6, 7, 8]
+      autumn: [9, 10, 11]
+      winter: [12, 1, 2]
+      
+  hours:
+    opening_hours: [8, 9, 10, 11, 12, 13, 14, 15]
+    non_opening_hours: [16, 17, 18, 19, 20, 21, 22, 23, 0, 1, 2, 3, 4, 5, 6, 7]
+    morning: [8, 9, 10, 11]
+    afternoon: [12, 13, 14, 15]
+    evening: [16, 17, 18, 19, 20, 21]
+    
+  metrics:
+    co2_thresholds: [800, 1000, 1500, 2000]
+    temperature_ranges:
+      comfort: [20, 26]
+      extended: [18, 28]
+
+# Advanced analytics configuration
+advanced_analytics:
+  enable_ai_insights: true
+  enable_predictive_analysis: false
+  enable_cost_modeling: true
+  
+  ai_insights:
+    focus_areas: ["energy_efficiency", "comfort_optimization", "maintenance_prediction"]
+    confidence_threshold: 0.7
+    
+  cost_modeling:
+    currency: "DKK"
+    energy_price_kwh: 2.50
+    maintenance_cost_factors:
+      hvac_adjustment: 500
+      ventilation_upgrade: 15000
+      sensor_replacement: 1000
+
+# Data mapping - which analysis tests to use
+data_mapping:
+  co2_tests:
+    opening_hours: "co2_1000_all_year_opening"
+    non_opening_hours: "co2_1000_all_year_non_opening"
+    seasonal:
+      spring: "co2_1000_spring_opening"
+      summer: "co2_1000_summer_opening"
+      autumn: "co2_1000_autumn_opening"
+      winter: "co2_1000_winter_opening"
+      
+  temperature_tests:
+    opening_hours: "temp_comfort_all_year_opening"
+    non_opening_hours: "temp_comfort_all_year_non_opening"
+    seasonal:
+      spring: "temp_comfort_spring_opening"
+      summer: "temp_comfort_summer_opening"
+      autumn: "temp_comfort_autumn_opening"
+      winter: "temp_comfort_winter_opening"
+
+# Output configuration
+output:
+  formats: ["pdf", "html"]
+  pdf_options:
+    page_size: "A4"
+    orientation: "portrait"
+    margins: "2cm"
+    include_toc: true
+    
+  chart_options:
+    save_formats: ["png", "svg"]
+    resolution: 300
+    width: 800
+    height: 600
+    
+  file_naming:
+    pattern: "HTK_Report_{building}_{date}"
+    date_format: "%Y%m%d"

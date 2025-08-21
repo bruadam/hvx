@@ -160,7 +160,7 @@ ieq-analytics-project/
 ├── 📁 config/                    # Configuration files
 │   ├── project.json             # Project metadata
 │   ├── mapping_config.json      # Data mapping configuration
-│   ├── analytics_rules.yaml     # Custom analytics rules
+│   ├── tests.yaml     # Custom analytics rules
 │   └── en16798_thresholds.yaml  # EN standard thresholds
 ├── 📁 data/                     # Data directories
 │   ├── raw/                     # Original CSV files

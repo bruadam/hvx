@@ -1,0 +1,115 @@
+# Chart Library Configuration
+# Predefined chart sets and configurations for common use cases.
+
+chart_sets:
+  # Basic indoor air quality analysis
+  basic_iaq:
+    description: "Basic indoor air quality charts"
+    charts:
+      - "co2_concentration"
+      - "temperature_trends"
+      - "performance_overview"
+    tags: ["basic", "iaq", "overview"]
+  
+  # Compliance reporting
+  compliance_report:
+    description: "Charts for compliance reporting"
+    charts:
+      - "en16798_compliance"
+      - "performance_overview"
+      - "co2_concentration"
+      - "temperature_trends"
+    tags: ["compliance", "reporting", "standards"]
+  
+  # Time-based analysis
+  temporal_analysis:
+    description: "Charts for temporal pattern analysis"
+    charts:
+      - "time_of_day_heatmap"
+      - "co2_concentration"
+      - "temperature_trends"
+    tags: ["temporal", "patterns", "time"]
+  
+  # Dashboard overview
+  dashboard_overview:
+    description: "Dashboard-style overview charts"
+    charts:
+      - "performance_overview"
+      - "en16798_compliance"
+    tags: ["dashboard", "overview", "kpi"]
+  
+  # Detailed analysis
+  detailed_analysis:
+    description: "Comprehensive detailed analysis charts"
+    charts:
+      - "co2_concentration"
+      - "temperature_trends"
+      - "time_of_day_heatmap"
+      - "en16798_compliance"
+      - "performance_overview"
+    tags: ["detailed", "comprehensive", "analysis"]
+
+  # HTK (Høje-Taastrup Kommune) specific chart set
+  htk_municipal:
+    description: "Charts for HTK municipal report"
+    charts:
+      - "building_comparison"
+      - "performance_overview"
+      - "data_completeness"
+      - "top_issues_rooms"
+      - "compliance_overview"
+      - "non_compliant_opening_hours"
+      - "non_compliant_non_opening_hours"
+      - "room_temperature_co2"
+      - "seasonal_analysis"
+      - "daily_patterns"
+      - "priority_matrix"
+      - "cost_benefit"
+    tags: ["municipal", "htk", "comprehensive", "compliance"]
+
+# Default chart configurations
+default_configs:
+  co2_concentration:
+    thresholds:
+      good: 400
+      acceptable: 1000
+      poor: 1500
+    colors:
+      primary: "#2E86AB"
+      secondary: "#A23B72"
+  
+  temperature_trends:
+    comfort_zone:
+      min: 20
+      max: 26
+    colors:
+      primary: "#2E86AB"
+      secondary: "#A23B72"
+  
+  performance_overview:
+    thresholds:
+      co2:
+        good: 400
+        acceptable: 1000
+        poor: 1500
+      temperature:
+        good: 22
+        acceptable: 26
+        poor: 30
+      compliance:
+        good: 95
+        acceptable: 85
+        poor: 70
+
+# Chart category mappings
+category_mappings:
+  "Indoor Air Quality":
+    - "co2_concentration"
+  "Thermal Comfort":
+    - "temperature_trends"
+  "Performance":
+    - "performance_overview"
+  "Compliance":
+    - "en16798_compliance"
+  "Time Analysis":
+    - "time_of_day_heatmap"

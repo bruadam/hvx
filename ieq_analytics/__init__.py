@@ -12,7 +12,6 @@ from .models import Building, Room, IEQData
 from .enums import IEQParameter
 from .mapping import DataMapper
 from .analytics import IEQAnalytics
-from . import utils
 
 __all__ = [
     "Building",
@@ -20,6 +19,5 @@ __all__ = [
     "IEQData",
     "IEQParameter",
     "DataMapper",
-    "IEQAnalytics",
-    "utils",
+    "IEQAnalytics"
 ]

@@ -419,7 +419,10 @@ class ReportEngine:
         charts = {}
         
         try:
-            # Worst performers chart
+            room_analyses = report_data.get('room_analyses', [])
+            building_analyses = report_data.get('building_analyses', {})
+            
+            # 1. Worst performers chart
             worst_performers = report_data.get('worst_performers', {})
             if worst_performers:
                 chart_result = self.graph_engine.create_worst_performers_chart(
@@ -434,8 +437,7 @@ class ReportEngine:
                     )
                     charts['worst_performers'] = chart_path
             
-            # Compliance comparison chart
-            room_analyses = report_data.get('room_analyses', [])
+            # 2. Performance comparison by building
             if room_analyses:
                 comparison_data = self.data_processor.prepare_comparison_data(
                     room_analyses, 'performance_score', 'building'
@@ -453,7 +455,74 @@ class ReportEngine:
                     )
                     charts['performance_comparison'] = chart_path
             
-            # Time series chart (if data available)
+            # 3. Temperature compliance comparison
+            if room_analyses:
+                temp_comparison_data = self.data_processor.prepare_comparison_data(
+                    room_analyses, 'temperature_compliance', 'building'
+                )
+                
+                chart_result = self.graph_engine.create_compliance_comparison_chart(
+                    temp_comparison_data, GraphType.BAR_CHART
+                )
+                
+                if 'figure' in chart_result:
+                    chart_path = self.graph_engine.save_figure(
+                        chart_result['figure'],
+                        charts_dir,
+                        f"{filename_prefix}_temperature_compliance"
+                    )
+                    charts['temperature_compliance'] = chart_path
+            
+            # 4. CO2 compliance comparison
+            if room_analyses:
+                co2_comparison_data = self.data_processor.prepare_comparison_data(
+                    room_analyses, 'co2_compliance', 'building'
+                )
+                
+                chart_result = self.graph_engine.create_compliance_comparison_chart(
+                    co2_comparison_data, GraphType.BAR_CHART
+                )
+                
+                if 'figure' in chart_result:
+                    chart_path = self.graph_engine.save_figure(
+                        chart_result['figure'],
+                        charts_dir,
+                        f"{filename_prefix}_co2_compliance"
+                    )
+                    charts['co2_compliance'] = chart_path
+            
+            # 5. Data quality overview
+            if room_analyses:
+                quality_comparison_data = self.data_processor.prepare_comparison_data(
+                    room_analyses, 'data_quality_score', 'building'
+                )
+                
+                chart_result = self.graph_engine.create_compliance_comparison_chart(
+                    quality_comparison_data, GraphType.BAR_CHART
+                )
+                
+                if 'figure' in chart_result:
+                    chart_path = self.graph_engine.save_figure(
+                        chart_result['figure'],
+                        charts_dir,
+                        f"{filename_prefix}_data_quality_overview"
+                    )
+                    charts['data_quality_overview'] = chart_path
+            
+            # 6. Building summary chart
+            if building_analyses:
+                building_summary_data = self._prepare_building_summary_data(building_analyses)
+                chart_result = self.graph_engine.create_building_summary_chart(building_summary_data)
+                
+                if 'figure' in chart_result:
+                    chart_path = self.graph_engine.save_figure(
+                        chart_result['figure'],
+                        charts_dir,
+                        f"{filename_prefix}_building_summary"
+                    )
+                    charts['building_summary'] = chart_path
+            
+            # 7. Time series chart (if data available)
             if self.config.include_time_series and 'ieq_data_list' in report_data:
                 ieq_data_list = report_data['ieq_data_list'][:5]  # Limit to first 5 for clarity
                 
@@ -473,7 +542,7 @@ class ReportEngine:
                     )
                     charts['time_series'] = chart_path
             
-            # Heatmap (if data available and requested)
+            # 8. Temperature heatmap (if data available and requested)
             if self.config.include_heatmaps and 'ieq_data_list' in report_data and report_data['ieq_data_list']:
                 ieq_data = report_data['ieq_data_list'][0]  # Use first dataset
                 
@@ -490,6 +559,36 @@ class ReportEngine:
                         f"{filename_prefix}_temperature_heatmap"
                     )
                     charts['temperature_heatmap'] = chart_path
+            
+            # 9. Temperature distribution overview
+            if room_analyses:
+                temp_means = []
+                building_labels = []
+                for analysis in room_analyses:
+                    temp_stats = analysis.get('basic_statistics', {}).get('temperature', {})
+                    if 'mean' in temp_stats:
+                        temp_means.append(temp_stats['mean'])
+                        building_labels.append(analysis.get('building_id', 'Unknown'))
+                
+                if temp_means:
+                    # Create simple distribution data
+                    temp_distribution_data = {
+                        'data': temp_means,
+                        'labels': building_labels,
+                        'metric': 'temperature_mean'
+                    }
+                    
+                    chart_result = self.graph_engine.create_simple_distribution_chart(
+                        temp_distribution_data, 'Temperature Distribution Across Rooms'
+                    )
+                    
+                    if 'figure' in chart_result:
+                        chart_path = self.graph_engine.save_figure(
+                            chart_result['figure'],
+                            charts_dir,
+                            f"{filename_prefix}_temperature_distribution"
+                        )
+                        charts['temperature_distribution'] = chart_path
             
         except Exception as e:
             logger.error(f"Chart generation error: {e}")
@@ -508,3 +607,43 @@ class ReportEngine:
                     issues += 1
                     break
         return issues
+    
+    def _prepare_building_summary_data(self, building_analyses: Dict[str, Any]) -> Dict[str, Any]:
+        """Prepare data for building summary visualization."""
+        summary_data = {
+            'buildings': [],
+            'metrics': {
+                'room_count': [],
+                'avg_quality': [],
+                'recommendation_count': []
+            }
+        }
+        
+        for building_id, analysis in building_analyses.items():
+            summary_data['buildings'].append(building_id)
+            summary_data['metrics']['room_count'].append(analysis.get('room_count', 0))
+            summary_data['metrics']['avg_quality'].append(
+                analysis.get('data_quality_summary', {}).get('average_quality_score', 0)
+            )
+            summary_data['metrics']['recommendation_count'].append(
+                len(analysis.get('building_recommendations', []))
+            )
+        
+        return summary_data
+    
+    def _prepare_distribution_data(self, room_analyses: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """Prepare parameter distribution data for visualization."""
+        distribution_data = {}
+        
+        for analysis in room_analyses:
+            room_id = analysis.get('room_id')
+            basic_stats = analysis.get('basic_statistics', {})
+            
+            # Extract temperature data
+            temp_stats = basic_stats.get('temperature', {})
+            if temp_stats and 'mean' in temp_stats:
+                if room_id not in distribution_data:
+                    distribution_data[room_id] = {}
+                distribution_data[room_id]['temperature'] = temp_stats.get('mean', 0)
+        
+        return distribution_data

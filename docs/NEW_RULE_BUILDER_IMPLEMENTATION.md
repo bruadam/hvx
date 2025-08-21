@@ -193,7 +193,7 @@ from ieq_analytics.rule_builder import AnalyticsEngine
 from ieq_analytics.models import IEQData
 
 # Initialize engine with config
-engine = AnalyticsEngine("config/analytics_rules.yaml")
+engine = AnalyticsEngine("config/tests.yaml")
 
 # Analyze all rules
 results = engine.analyze_comfort_compliance(ieq_data)
@@ -256,7 +256,7 @@ The new implementation includes comprehensive testing:
 python -c "from ieq_analytics.rule_builder import RuleEvaluator; print('✅ Working!')"
 
 # Test with real data
-python -m ieq_analytics.cli analyze --data-dir data/mapped --rules-config config/analytics_rules.yaml
+python -m ieq_analytics.cli analyze --data-dir data/mapped --rules-config config/tests.yaml
 ```
 
 ## Benefits

@@ -435,6 +435,136 @@ class GraphEngine:
             'title': f'{parameter.title()} Distribution'
         }
     
+    def create_building_summary_chart(
+        self,
+        building_summary_data: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """
+        Create building summary comparison chart.
+        
+        Args:
+            building_summary_data: Building summary metrics
+            
+        Returns:
+            Chart generation results
+        """
+        logger.info("Creating building summary chart")
+        
+        buildings = building_summary_data.get('buildings', [])
+        metrics = building_summary_data.get('metrics', {})
+        
+        if not buildings:
+            return {'error': 'No building data available'}
+        
+        fig, axes = plt.subplots(1, 3, figsize=(18, 6))
+        
+        # Room count
+        room_counts = metrics.get('room_count', [])
+        if room_counts:
+            axes[0].bar(buildings, room_counts, color=self.style.color_schemes["buildings"][:len(buildings)])
+            axes[0].set_title('Room Count by Building')
+            axes[0].set_ylabel('Number of Rooms')
+            axes[0].tick_params(axis='x', rotation=45)
+        
+        # Average quality
+        avg_quality = metrics.get('avg_quality', [])
+        if avg_quality:
+            colors = [self._get_quality_color(q) for q in avg_quality]
+            axes[1].bar(buildings, avg_quality, color=colors)
+            axes[1].set_title('Average Data Quality by Building')
+            axes[1].set_ylabel('Quality Score (0-1)')
+            axes[1].set_ylim(0, 1)
+            axes[1].tick_params(axis='x', rotation=45)
+        
+        # Recommendation count
+        rec_counts = metrics.get('recommendation_count', [])
+        if rec_counts:
+            axes[2].bar(buildings, rec_counts, color=self.style.color_schemes["severity"][:len(buildings)])
+            axes[2].set_title('Recommendations by Building')
+            axes[2].set_ylabel('Number of Recommendations')
+            axes[2].tick_params(axis='x', rotation=45)
+        
+        plt.tight_layout()
+        
+        return {
+            'figure': fig,
+            'chart_type': 'building_summary',
+            'building_count': len(buildings),
+            'title': 'Building Summary Comparison'
+        }
+    
+    def _get_quality_color(self, quality_score: float) -> str:
+        """Get color based on quality score."""
+        if quality_score >= 0.9:
+            return self.style.color_schemes["severity"][0]  # Green - Excellent
+        elif quality_score >= 0.8:
+            return self.style.color_schemes["severity"][1]  # Yellow - Good
+        elif quality_score >= 0.6:
+            return self.style.color_schemes["severity"][2]  # Orange - Fair
+        else:
+            return self.style.color_schemes["severity"][3]  # Red - Poor
+    
+    def create_simple_distribution_chart(
+        self,
+        distribution_data: Dict[str, Any],
+        title: str = "Distribution Chart"
+    ) -> Dict[str, Any]:
+        """
+        Create a simple distribution chart (histogram).
+        
+        Args:
+            distribution_data: Dictionary with 'data', 'labels', and 'metric' keys
+            title: Chart title
+            
+        Returns:
+            Chart generation results
+        """
+        logger.info(f"Creating simple distribution chart: {title}")
+        
+        data_values = distribution_data.get('data', [])
+        if not data_values:
+            return {'error': 'No distribution data available'}
+        
+        fig, ax = plt.subplots(figsize=self.style.figsize, dpi=self.style.dpi)
+        
+        # Create histogram
+        ax.hist(data_values, bins=20, alpha=0.7, color=self.style.color_schemes["parameters"][0], 
+                edgecolor='black', linewidth=0.5)
+        
+        # Add statistics
+        mean_val = np.mean(data_values)
+        std_val = np.std(data_values)
+        
+        ax.axvline(mean_val, color='red', linestyle='--', linewidth=2, 
+                   label=f'Mean: {mean_val:.1f}°C')
+        ax.axvline(mean_val + std_val, color='orange', linestyle=':', linewidth=1, 
+                   label=f'+1 StdDev: {mean_val + std_val:.1f}°C')
+        ax.axvline(mean_val - std_val, color='orange', linestyle=':', linewidth=1, 
+                   label=f'-1 StdDev: {mean_val - std_val:.1f}°C')
+        
+        ax.set_title(title)
+        ax.set_xlabel('Temperature (°C)')
+        ax.set_ylabel('Number of Rooms')
+        ax.legend()
+        
+        if self.style.grid:
+            ax.grid(True, alpha=self.style.grid_alpha)
+        
+        plt.tight_layout()
+        
+        return {
+            'figure': fig,
+            'chart_type': 'simple_distribution',
+            'data_points': len(data_values),
+            'title': title,
+            'statistics': {
+                'mean': mean_val,
+                'std': std_val,
+                'min': min(data_values),
+                'max': max(data_values)
+            }
+        }
+    
     def _get_performance_colors(self, scores: List[float]) -> List[str]:
         """Get colors based on performance scores."""
         colors = []
