@@ -23,6 +23,7 @@ from .commands.report import report
 from .commands.projects import projects
 from .commands.templates import templates
 from .commands.charts import charts
+from .commands.climate import climate
 
 console = Console()
 
@@ -63,6 +64,7 @@ def cli(ctx, workspace: Path, debug: bool, version: bool):
     Commands:
         mapping   - Map raw CSV sensor data to standardized format
         analyze   - Analyze mapped data for comfort compliance
+        climate   - Analyze climate-indoor correlations for solar sensitivity
         charts    - Manage shared chart library and visualizations
         rules     - Create and manage analytics rules
         report    - Generate comprehensive analysis reports
@@ -117,15 +119,17 @@ def cli(ctx, workspace: Path, debug: bool, version: bool):
         
         console.print("\n💡 Quick Start:")
         console.print("  1. ieq-analytics mapping     # Map raw CSV files")
-        console.print("  2. ieq-analytics analyze     # Analyze mapped data")  
-        console.print("  3. ieq-analytics charts list  # Browse available charts")
-        console.print("  4. ieq-analytics templates browse  # Interactive template selection")
-        console.print("  5. ieq-analytics report from-yaml --interactive  # Generate reports")
+        console.print("  2. ieq-analytics analyze     # Analyze mapped data")
+        console.print("  3. ieq-analytics climate     # Climate correlation analysis") 
+        console.print("  4. ieq-analytics charts list  # Browse available charts")
+        console.print("  5. ieq-analytics templates browse  # Interactive template selection")
+        console.print("  6. ieq-analytics report from-yaml --interactive  # Generate reports")
 
 
 # Register command groups
 cli.add_command(analyze)
 cli.add_command(mapping)
+cli.add_command(climate)
 cli.add_command(rules)
 cli.add_command(report)
 cli.add_command(projects)

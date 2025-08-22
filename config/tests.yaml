@@ -1,194 +1,190 @@
 # Tests Configuration - Comprehensive Analysis
 analytics:
-  # Temperature analyses - All periods and filters
-  temp_comfort_all_year_opening:
-    description: "Temperatur 20-26°C (hele året, åbningstid)"
+  # Temperature threshold separations for detailed analysis
+  temp_below_20_all_year_opening:
+    description: "Temperatur <20°C - Underkøling (hele året, åbningstid)"
     feature: temperature
     period: all_year
     filter: opening_hours
-    mode: bidirectional
-    limits: 
-      upper: 26
-      lower: 20
+    mode: unidirectional_descending
+    limit: 20
 
-  temp_comfort_all_year_non_opening:
-    description: "Temperatur 20-26°C (hele året, uden for åbningstid)"
-    feature: temperature
-    period: all_year
-    filter: non_opening_hours
-    mode: bidirectional
-    limits: 
-      upper: 26
-      lower: 20
-
-  temp_comfort_spring_opening:
-    description: "Temperatur 20-26°C (forår, åbningstid)"
-    feature: temperature
-    period: spring
-    filter: opening_hours
-    mode: bidirectional
-    limits: 
-      upper: 26
-      lower: 20
-
-  temp_comfort_summer_opening:
-    description: "Temperatur 20-26°C (sommer, åbningstid)"
-    feature: temperature
-    period: summer
-    filter: opening_hours
-    mode: bidirectional
-    limits: 
-      upper: 26
-      lower: 20
-
-  temp_comfort_autumn_opening:
-    description: "Temperatur 20-26°C (efterår, åbningstid)"
-    feature: temperature
-    period: autumn
-    filter: opening_hours
-    mode: bidirectional
-    limits: 
-      upper: 26
-      lower: 20
-
-  temp_comfort_winter_opening:
-    description: "Temperatur 20-26°C (vinter, åbningstid)"
+  temp_below_20_winter_opening:
+    description: "Temperatur <20°C - Underkøling (vinter, åbningstid)"
     feature: temperature
     period: winter
     filter: opening_hours
+    mode: unidirectional_descending
+    limit: 20
+
+  temp_above_26_all_year_opening:
+    description: "Temperatur >26°C - Overophedning (hele året, åbningstid)"
+    feature: temperature
+    period: all_year
+    filter: opening_hours
+    mode: unidirectional_ascending
+    limit: 26
+
+  temp_above_26_summer_opening:
+    description: "Temperatur >26°C - Overophedning (sommer, åbningstid)"
+    feature: temperature
+    period: summer
+    filter: opening_hours
+    mode: unidirectional_ascending
+    limit: 26
+
+  temp_above_27_all_year_opening:
+    description: "Temperatur >27°C - Kritisk overophedning (hele året, åbningstid)"
+    feature: temperature
+    period: all_year
+    filter: opening_hours
+    mode: unidirectional_ascending
+    limit: 27
+
+  temp_above_27_summer_opening:
+    description: "Temperatur >27°C - Kritisk overophedning (sommer, åbningstid)"
+    feature: temperature
+    period: summer
+    filter: opening_hours
+    mode: unidirectional_ascending
+    limit: 27
+
+  # Comfort zone analysis (20-26°C)
+  temp_comfort_zone_20_26_all_year_opening:
+    description: "Temperatur 20-26°C - Komfortzone (hele året, åbningstid, ekskl. ferier)"
+    feature: temperature
+    period: all_year
+    filter: opening_hours_no_holidays
     mode: bidirectional
     limits: 
       upper: 26
       lower: 20
 
-  temp_summer_limit_morning:
-    description: "Temperatur <26°C (sommer, morgen)"
-    feature: temperature
-    period: summer
-    filter: morning
-    mode: unidirectional_ascending
-    limit: 26
-
-  temp_summer_limit_afternoon:
-    description: "Temperatur <26°C (sommer, eftermiddag)"
-    feature: temperature
-    period: summer
-    filter: afternoon
-    mode: unidirectional_ascending
-    limit: 26
-
-  temp_summer_limit_evening:
-    description: "Temperatur <26°C (sommer, aften)"
-    feature: temperature
-    period: summer
-    filter: evening
-    mode: unidirectional_ascending
-    limit: 26
-
-  # Additional temperature limits
-  temp_27_all_year_opening:
-    description: "Temperatur <27°C (hele året, åbningstid)"
+  # Optimal comfort zone (21-24°C)
+  temp_optimal_zone_21_24_all_year_opening:
+    description: "Temperatur 21-24°C - Optimal komfort (hele året, åbningstid, ekskl. ferier)"
     feature: temperature
     period: all_year
-    filter: opening_hours
-    mode: unidirectional_ascending
-    limit: 27
+    filter: opening_hours_no_holidays
+    mode: bidirectional
+    limits: 
+      upper: 24
+      lower: 21
 
-  temp_27_summer_opening:
-    description: "Temperatur <27°C (sommer, åbningstid)"
-    feature: temperature
-    period: summer
-    filter: opening_hours
-    mode: unidirectional_ascending
-    limit: 27
-
-  # CO2 analyses - All periods and filters
+  # CO2 analyses - Separated thresholds for detailed compliance tracking
+  
+  # 1000ppm threshold (standard comfort level)
   co2_1000_all_year_opening:
-    description: "CO2 <1000ppm (hele året, åbningstid)"
+    description: "CO₂ <1000ppm - Standard luftkvalitet (hele året, åbningstid, ekskl. ferier)"
     feature: co2
     period: all_year
-    filter: opening_hours
+    filter: opening_hours_no_holidays
     mode: unidirectional_ascending
     limit: 1000
 
   co2_1000_all_year_non_opening:
-    description: "CO2 <1000ppm (hele året, uden for åbningstid)"
+    description: "CO₂ <1000ppm - Standard luftkvalitet (hele året, uden for åbningstid)"
     feature: co2
     period: all_year
     filter: non_opening_hours
     mode: unidirectional_ascending
     limit: 1000
 
-  co2_2000_all_year_opening:
-    description: "CO2 <2000ppm (hele året, åbningstid)"
-    feature: co2
-    period: all_year
-    filter: opening_hours
-    mode: unidirectional_ascending
-    limit: 2000
-
-  # Additional CO2 limits for non-opening hours
-  co2_2000_all_year_non_opening:
-    description: "CO2 <2000ppm (hele året, uden for åbningstid)"
-    feature: co2
-    period: all_year
-    filter: non_opening_hours
-    mode: unidirectional_ascending
-    limit: 2000
-
   co2_1000_spring_opening:
-    description: "CO2 <1000ppm (forår, åbningstid)"
+    description: "CO₂ <1000ppm - Standard luftkvalitet (forår, åbningstid, ekskl. ferier)"
     feature: co2
     period: spring
-    filter: opening_hours
+    filter: opening_hours_no_holidays
     mode: unidirectional_ascending
     limit: 1000
 
   co2_1000_summer_opening:
-    description: "CO2 <1000ppm (sommer, åbningstid)"
+    description: "CO₂ <1000ppm - Standard luftkvalitet (sommer, åbningstid, ekskl. ferier)"
     feature: co2
     period: summer
-    filter: opening_hours
+    filter: opening_hours_no_holidays
     mode: unidirectional_ascending
     limit: 1000
 
   co2_1000_autumn_opening:
-    description: "CO2 <1000ppm (efterår, åbningstid)"
+    description: "CO₂ <1000ppm - Standard luftkvalitet (efterår, åbningstid, ekskl. ferier)"
     feature: co2
     period: autumn
-    filter: opening_hours
+    filter: opening_hours_no_holidays
     mode: unidirectional_ascending
     limit: 1000
 
   co2_1000_winter_opening:
-    description: "CO2 <1000ppm (vinter, åbningstid)"
+    description: "CO₂ <1000ppm - Standard luftkvalitet (vinter, åbningstid, ekskl. ferier)"
     feature: co2
     period: winter
-    filter: opening_hours
+    filter: opening_hours_no_holidays
     mode: unidirectional_ascending
     limit: 1000
 
-  co2_1000_morning:
-    description: "CO2 <1000ppm (morgen)"
+  # 2000ppm threshold (acceptable limit)
+  co2_2000_all_year_opening:
+    description: "CO₂ <2000ppm - Acceptabel grænse (hele året, åbningstid, ekskl. ferier)"
     feature: co2
     period: all_year
-    filter: morning
+    filter: opening_hours_no_holidays
+    mode: unidirectional_ascending
+    limit: 2000
+
+  co2_2000_all_year_non_opening:
+    description: "CO₂ <2000ppm - Acceptabel grænse (hele året, uden for åbningstid)"
+    feature: co2
+    period: all_year
+    filter: non_opening_hours
+    mode: unidirectional_ascending
+    limit: 2000
+
+  co2_2000_spring_opening:
+    description: "CO₂ <2000ppm - Acceptabel grænse (forår, åbningstid, ekskl. ferier)"
+    feature: co2
+    period: spring
+    filter: opening_hours_no_holidays
+    mode: unidirectional_ascending
+    limit: 2000
+
+  co2_2000_summer_opening:
+    description: "CO₂ <2000ppm - Acceptabel grænse (sommer, åbningstid, ekskl. ferier)"
+    feature: co2
+    period: summer
+    filter: opening_hours_no_holidays
+    mode: unidirectional_ascending
+    limit: 2000
+
+  co2_2000_autumn_opening:
+    description: "CO₂ <2000ppm - Acceptabel grænse (efterår, åbningstid, ekskl. ferier)"
+    feature: co2
+    period: autumn
+    filter: opening_hours_no_holidays
+    mode: unidirectional_ascending
+    limit: 2000
+
+  co2_2000_winter_opening:
+    description: "CO₂ <2000ppm - Acceptabel grænse (vinter, åbningstid, ekskl. ferier)"
+    feature: co2
+    period: winter
+    filter: opening_hours_no_holidays
+    mode: unidirectional_ascending
+    limit: 2000
+
+  # Time of day analysis for CO2
+  co2_1000_morning:
+    description: "CO₂ <1000ppm (morgen 8-11, åbningstid, ekskl. ferier)"
+    feature: co2
+    period: all_year
+    filter: morning_no_holidays
     mode: unidirectional_ascending
     limit: 1000
 
   co2_1000_afternoon:
-    description: "CO2 <1000ppm (eftermiddag)"
+    description: "CO₂ <1000ppm (eftermiddag 12-15, åbningstid, ekskl. ferier)"
     feature: co2
     period: all_year
-    filter: afternoon
-    mode: unidirectional_ascending
-    limit: 1000
-
-  co2_1000_evening:
-    description: "CO2 <1000ppm (aften)"
-    feature: co2
-    period: all_year
-    filter: evening
+    filter: afternoon_no_holidays
     mode: unidirectional_ascending
     limit: 1000
 
@@ -227,26 +223,53 @@ filters:
     hours: [8, 9, 10, 11, 12, 13, 14, 15]
     weekdays_only: true
     exclude_holidays: true
+  
+  opening_hours_no_holidays:
+    description: "Åbningstider (8-15), hverdage, ekskluderer alle skoleferier"
+    hours: [8, 9, 10, 11, 12, 13, 14, 15]
+    weekdays_only: true
+    exclude_holidays: true
+    exclude_custom_holidays: true
+  
   non_opening_hours:
     hours: [16, 17, 18, 19, 20, 21, 22, 23, 0, 1, 2, 3, 4, 5, 6, 7]
     weekdays_only: false
     exclude_holidays: false
+  
   morning:
     hours: [8, 9, 10, 11]
     weekdays_only: false
     exclude_holidays: false
+  
+  morning_no_holidays:
+    description: "Morgen (8-11), hverdage, ekskluderer skoleferier"
+    hours: [8, 9, 10, 11]
+    weekdays_only: true
+    exclude_holidays: true
+    exclude_custom_holidays: true
+  
   afternoon:
     hours: [12, 13, 14, 15]
     weekdays_only: false
     exclude_holidays: false
+  
+  afternoon_no_holidays:
+    description: "Eftermiddag (12-15), hverdage, ekskluderer skoleferier"
+    hours: [12, 13, 14, 15]
+    weekdays_only: true
+    exclude_holidays: true
+    exclude_custom_holidays: true
+  
   evening:
     hours: [16, 17, 18, 19, 20, 21]
     weekdays_only: false
     exclude_holidays: false
+  
   night:
     hours: [22, 23, 0, 1, 2, 3, 4, 5, 6, 7]
     weekdays_only: false
     exclude_holidays: false
+  
   all_hours:
     hours: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23]
     weekdays_only: false

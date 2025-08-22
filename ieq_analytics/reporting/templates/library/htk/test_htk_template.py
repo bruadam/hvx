@@ -166,7 +166,10 @@ def test_htk_template():
             result = htk_template.generate_report(
                 data_dir=data_dir,
                 output_dir=output_dir,
-                export_formats=["html"]  # Only HTML for testing
+                config_path=Path(__file__).parent / "tests.yaml",
+                mapped_dir=data_dir,  # Provide appropriate mapped_dir
+                climate_dir=data_dir,  # Provide appropriate climate_dir
+                export_formats=["html"],  # Only HTML for testing
             )
             
             if result.get('success'):
@@ -221,7 +224,7 @@ def test_chart_generation():
             charts_dir.mkdir(parents=True)
             
             # Create chart generator
-            chart_generator = HTKChartGenerator(charts_dir)
+            chart_generator = HTKChartGenerator(charts_dir, config={})
             print("  ✓ Chart generator created")
             
             # Generate sample analysis data
