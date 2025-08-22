@@ -98,7 +98,7 @@ class HTKReportTemplate(BaseTemplate):
             analysis_data = {k: v for k, v in analysis_data.items() if k in buildings}
         
         # Generate report data
-        report_data = self._prepare_report_data(analysis_data)
+        report_data = self._prepare_report_data(analysis_data, config)
         
         # Load mapped data for chart generation
         mapped_data_dir = mapped_dir.parent / "mapped_data" if (mapped_dir.parent / "mapped_data").exists() else mapped_dir
@@ -110,7 +110,7 @@ class HTKReportTemplate(BaseTemplate):
         chart_paths = self._generate_charts(mapped_data, charts_dir, config)
         
         # Prepare template context
-        template_context = self._prepare_template_context(report_data, chart_paths, mapped_data)
+        template_context = self._prepare_template_context(report_data, chart_paths, mapped_data, config)
         
         # Generate reports in requested formats
         generated_files = {}
@@ -167,7 +167,7 @@ class HTKReportTemplate(BaseTemplate):
         logger.info(f"Loaded mapped data for {len(mapped_data)} rooms")
         return mapped_data
     
-    def _calculate_basic_statistics(self, mapped_data: Dict[str, pd.DataFrame]) -> Dict[str, Dict[str, Any]]:
+    def _calculate_basic_statistics(self, mapped_data: Dict[str, pd.DataFrame], config: Optional[Dict[str, Any]] = None) -> Dict[str, Dict[str, Any]]:
         """Calculate basic statistics from mapped data."""
         statistics = {}
         
@@ -222,7 +222,7 @@ class HTKReportTemplate(BaseTemplate):
             room_stats['solar_shading'] = self._calculate_solar_shading_recommendation(df)
             
             # Detailed compliance analysis with separated thresholds and periods
-            room_stats['compliance_analysis'] = self._calculate_detailed_compliance(df, room_id)
+            room_stats['compliance_analysis'] = self._calculate_detailed_compliance(df, room_id, config)
             
             # Data quality statistics
             total_expected = len(df)
@@ -572,7 +572,7 @@ class HTKReportTemplate(BaseTemplate):
             
         return analysis_data
     
-    def _prepare_report_data(self, analysis_data: Dict[str, Any]) -> Dict[str, Any]:
+    def _prepare_report_data(self, analysis_data: Dict[str, Any], config: Dict[str, Any] = None) -> Dict[str, Any]:
         """Prepare structured report data from analysis results."""
         report_data = {
             "buildings": [],
@@ -584,7 +584,7 @@ class HTKReportTemplate(BaseTemplate):
         # Process each building
         building_metrics = []
         for building_name, building_data in analysis_data.items():
-            building_info = self._process_building_data(building_name, building_data)
+            building_info = self._process_building_data(building_name, building_data, analysis_data)
             report_data["buildings"].append(building_info)
             building_metrics.append(building_info["metrics"])
         
@@ -607,7 +607,7 @@ class HTKReportTemplate(BaseTemplate):
         
         return report_data
     
-    def _process_building_data(self, building_name: str, building_data: Dict[str, Any]) -> Dict[str, Any]:
+    def _process_building_data(self, building_name: str, building_data: Dict[str, Any], analysis_data: Dict[str, Any] = None) -> Dict[str, Any]:
         """Process analysis data for a single building."""
         building_info = {
             "id": building_name.lower().replace(" ", "_"),
@@ -628,10 +628,11 @@ class HTKReportTemplate(BaseTemplate):
         
         # Calculate building-level metrics
         if room_metrics:
-            building_info["metrics"] = self._calculate_building_metrics(room_metrics)
+            # Use the old aggregation method which works correctly
+            building_info["metrics"] = self._calculate_old_building_metrics(room_metrics)
         
         # Calculate performance attributes expected by template
-        co2_performance = building_info["metrics"].get("co2_compliance", 85.0)
+        co2_performance = building_info["metrics"].get("co2_compliance", building_info["metrics"].get("co2_2000_compliance", 85.0))
         temp_performance = building_info["metrics"].get("temp_compliance", 90.0)
         
         building_info.update({
@@ -734,7 +735,7 @@ class HTKReportTemplate(BaseTemplate):
                 metrics["co2_violations"] = co2_test["violations_count"]
             
             # Temperature compliance (opening hours)
-            temp_test = test_results.get("temp_comfort_all_year_opening", {})
+            temp_test = test_results.get("temp_comfort_zone_20_26_all_year_opening", {})
             if "compliance_rate" in temp_test:
                 metrics["temp_compliance"] = temp_test["compliance_rate"]  # Already percentage
             if "violations_count" in temp_test:
@@ -809,43 +810,80 @@ class HTKReportTemplate(BaseTemplate):
             "winter": "Vinter"
         }
         
-        if "test_results" not in room_data:
+        # Use compliance_analysis data which has better structure for averages
+        compliance_analysis = room_data.get("compliance_analysis", {})
+        if not compliance_analysis:
             return seasons
         
-        test_results = room_data["test_results"]
+        # Also keep test_results for seasonal compliance rates
+        test_results = room_data.get("test_results", {})
         
         for season_key, season_name in season_names.items():
             season_data = {
                 "name": season_name,
-                "co2_compliance": "N/A",
+                "co2_1000_compliance": "N/A",
+                "co2_2000_compliance": "N/A", 
                 "temp_compliance": "N/A",
                 "avg_co2": "N/A",
                 "avg_temp": "N/A",
-                "co2_class": "neutral",
-                "temp_class": "neutral"
+                "co2_1000_class": "neutral",
+                "co2_2000_class": "neutral",
+                "temp_class": "neutral",
+                "avg_co2_class": "neutral",
+                "avg_temp_class": "neutral"
             }
             
-            # Look for seasonal test results
-            co2_test_key = f"co2_1000_{season_key}_opening"
-            temp_test_key = f"temp_comfort_{season_key}_opening"
+            # Look for seasonal test results - CO2 1000ppm
+            co2_1000_test_key = f"co2_1000_{season_key}_opening"
+            co2_2000_test_key = f"co2_2000_{season_key}_opening"
+            temp_test_key = "temp_comfort_zone_20_26_all_year_opening"  # Temperature test is only all_year
             
-            if co2_test_key in test_results:
-                compliance_rate = test_results[co2_test_key].get("compliance_rate", 0)
+            if co2_1000_test_key in test_results:
+                compliance_rate = test_results[co2_1000_test_key].get("compliance_rate", 0)
                 if compliance_rate > 0:  # Only show if we have actual data
-                    season_data["co2_compliance"] = f"{compliance_rate:.1f}"
-                    season_data["co2_class"] = self._get_performance_class(compliance_rate)
-                    mean_value = test_results[co2_test_key].get("mean", 0)
-                    if mean_value > 0:
-                        season_data["avg_co2"] = f"{mean_value:.0f}"
+                    season_data["co2_1000_compliance"] = f"{compliance_rate:.1f}"
+                    season_data["co2_1000_class"] = self._get_performance_class(compliance_rate)
+                # Always try to get mean value regardless of compliance rate
+                mean_value = test_results[co2_1000_test_key].get("mean", 0)
+                if mean_value > 0:
+                    season_data["avg_co2"] = f"{mean_value:.0f}"
+                    season_data["avg_co2_class"] = "good" if mean_value < 800 else "warning" if mean_value < 1200 else "danger"
             
+            # Also try to get mean values from compliance_analysis opening_hours data
+            co2_compliance = compliance_analysis.get('co2_compliance', {})
+            temp_compliance = compliance_analysis.get('temperature_compliance', {})
+            opening_hours_co2 = co2_compliance.get('opening_hours', {})
+            opening_hours_temp = temp_compliance.get('opening_hours', {})
+            
+            # Extract mean values if not already set
+            if season_data["avg_co2"] == "N/A" and opening_hours_co2.get('mean_co2'):
+                mean_co2 = float(opening_hours_co2['mean_co2'])
+                season_data["avg_co2"] = f"{mean_co2:.0f}"
+                season_data["avg_co2_class"] = "good" if mean_co2 < 800 else "warning" if mean_co2 < 1200 else "danger"
+            
+            if season_data["avg_temp"] == "N/A" and opening_hours_temp.get('mean_temperature'):
+                mean_temp = float(opening_hours_temp['mean_temperature'])
+                season_data["avg_temp"] = f"{mean_temp:.1f}"
+                season_data["avg_temp_class"] = "good" if 20 <= mean_temp <= 24 else "warning" if 18 <= mean_temp <= 26 else "danger"
+            
+            # CO2 2000ppm data
+            if co2_2000_test_key in test_results:
+                compliance_rate = test_results[co2_2000_test_key].get("compliance_rate", 0)
+                if compliance_rate > 0:
+                    season_data["co2_2000_compliance"] = f"{compliance_rate:.1f}"
+                    season_data["co2_2000_class"] = self._get_performance_class(compliance_rate)
+            
+            # Temperature data
             if temp_test_key in test_results:
                 compliance_rate = test_results[temp_test_key].get("compliance_rate", 0)
                 if compliance_rate > 0:  # Only show if we have actual data
                     season_data["temp_compliance"] = f"{compliance_rate:.1f}"
                     season_data["temp_class"] = self._get_performance_class(compliance_rate)
-                    mean_value = test_results[temp_test_key].get("mean", 0)
-                    if mean_value > 0:
-                        season_data["avg_temp"] = f"{mean_value:.1f}"
+                # Always try to get mean value regardless of compliance rate
+                mean_value = test_results[temp_test_key].get("mean", 0)
+                if mean_value > 0:
+                    season_data["avg_temp"] = f"{mean_value:.1f}"
+                    season_data["avg_temp_class"] = "good" if 20 <= mean_value <= 24 else "warning" if 18 <= mean_value <= 26 else "danger"
             
             seasons.append(season_data)
         
@@ -880,7 +918,7 @@ class HTKReportTemplate(BaseTemplate):
         
         return issues
     
-    def _calculate_building_metrics(self, room_metrics: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def _calculate_old_building_metrics(self, room_metrics: List[Dict[str, Any]]) -> Dict[str, Any]:
         """Calculate building-level metrics from room metrics."""
         if not room_metrics:
             return {}
@@ -926,8 +964,9 @@ class HTKReportTemplate(BaseTemplate):
                 }
             }
         
-        overall_co2 = np.mean([b["co2_compliance"] for b in building_metrics])
-        overall_temp = np.mean([b["temp_compliance"] for b in building_metrics])
+        # Handle both old and new key names for building metrics
+        overall_co2 = np.mean([b.get("co2_compliance", b.get("co2_2000_compliance", 0)) for b in building_metrics])
+        overall_temp = np.mean([b.get("temp_compliance", 0) for b in building_metrics])
         overall_performance = (overall_co2 + overall_temp) / 2
         
         return {
@@ -1319,11 +1358,380 @@ class HTKReportTemplate(BaseTemplate):
                 'priority': 'Unknown'
             }
 
-    def _calculate_detailed_compliance(self, df: pd.DataFrame, room_id: str) -> Dict[str, Any]:
+    def _extract_thresholds_from_config(self, config: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+        """Extract threshold values from config."""
+        thresholds = {
+            'temp_min': 20,
+            'temp_max': 26,
+            'temp_critical': 27,
+            'temp_optimal_min': 21,
+            'temp_optimal_max': 24,
+            'co2_standard': 1000,
+            'co2_max': 2000
+        }
+        
+        if config and 'analytics' in config:
+            analytics = config['analytics']
+            
+            # Extract temperature thresholds
+            if 'temp_below_20_all_year_opening' in analytics:
+                thresholds['temp_min'] = analytics['temp_below_20_all_year_opening']['limit']
+            if 'temp_above_26_all_year_opening' in analytics:
+                thresholds['temp_max'] = analytics['temp_above_26_all_year_opening']['limit']
+            if 'temp_above_27_all_year_opening' in analytics:
+                thresholds['temp_critical'] = analytics['temp_above_27_all_year_opening']['limit']
+            if 'temp_optimal_zone_21_24_all_year_opening' in analytics:
+                limits = analytics['temp_optimal_zone_21_24_all_year_opening'].get('limits', {})
+                thresholds['temp_optimal_min'] = limits.get('lower', 21)
+                thresholds['temp_optimal_max'] = limits.get('upper', 24)
+            
+            # Extract CO2 thresholds  
+            if 'co2_1000_all_year_opening' in analytics:
+                thresholds['co2_standard'] = analytics['co2_1000_all_year_opening']['limit']
+            # Look for co2_2000 threshold
+            for key, value in analytics.items():
+                if 'co2' in key and value.get('limit') == 2000:
+                    thresholds['co2_max'] = value['limit']
+                    break
+        
+        return thresholds
+    
+    def _generate_analysis_explanations(self) -> Dict[str, str]:
+        """Generate explanations for different analysis logics used in the report."""
+        explanations = {
+            'ventilation_rate': """
+            <h3>🌬️ Ventilationsrate analyse</h3>
+            <p>Ventilationsraten beregnes ud fra CO₂-koncentrationen i rummet og estimeret personbelastning.
+            Analysen bruger følgende logik:</p>
+            <ul>
+                <li><strong>Standard grænse (1000 ppm):</strong> Indikerer tilstrækkelig ventilation for normal komfort</li>
+                <li><strong>Acceptabel grænse (2000 ppm):</strong> Maximum acceptabelt niveau ifølge danske bygningsregler</li>
+                <li><strong>Tidsperioder:</strong> Separat analyse for åbningstid vs. ikke-åbningstid</li>
+                <li><strong>Sæsonanalyse:</strong> Vinter/sommer forskelle i ventilationsmønstre</li>
+            </ul>
+            <p><em>Høje CO₂-værdier indikerer utilstrækkelig ventilation og kan føre til træthed og reduceret koncentration.</em></p>
+            """,
+            
+            'temperature_comfort': """
+            <h3>🌡️ Temperaturkomfort analyse</h3>
+            <p>Temperaturanalysen evaluerer termisk komfort baseret på DS/EN 16798-1 standarder:</p>
+            <ul>
+                <li><strong>Underkøling (&lt;20°C):</strong> For lav temperatur, kan føre til ubehag og energispild</li>
+                <li><strong>Komfortzone (20-26°C):</strong> Acceptabelt temperaturområde for de fleste aktiviteter</li>
+                <li><strong>Optimal zone (21-24°C):</strong> Ideelt temperaturområde for maksimal komfort</li>
+                <li><strong>Overophedning (&gt;26°C):</strong> For høj temperatur, reducerer komfort og produktivitet</li>
+                <li><strong>Kritisk overophedning (&gt;27°C):</strong> Uacceptabelt højt niveau, kræver øjeblikkelig handling</li>
+            </ul>
+            <p><em>Analysen tager højde for årstider og åbningstider for mere præcise anbefalinger.</em></p>
+            """,
+            
+            'data_quality': """
+            <h3>📊 Datakvalitets analyse</h3>
+            <p>Datakvalitetsanalysen sikrer pålideligheden af de præsenterede resultater:</p>
+            <ul>
+                <li><strong>Tilgængelighed:</strong> Procentdel af forventede datapunkter der er til stede</li>
+                <li><strong>Validitet:</strong> Kontrol for urealistiske værdier og målefejl</li>
+                <li><strong>Kontinuitet:</strong> Identifikation af huller i datasamlingen</li>
+                <li><strong>Kvalitetsscore:</strong> Samlet vurdering af datasættets pålidelighed (0-100%)</li>
+            </ul>
+            <p><em>Kun data med tilstrækkelig kvalitet inkluderes i compliance-analyserne.</em></p>
+            """,
+            
+            'period_analysis': """
+            <h3>📅 Periodeanalyse</h3>
+            <p>Analysen opdeler data i forskellige tidsperioder for nuanceret forståelse:</p>
+            <ul>
+                <li><strong>Åbningstider:</strong> Hverdage 8:00-15:30, ekskluderer skoleferier</li>
+                <li><strong>Sæsoner:</strong> Vinter, forår, sommer, efterår baseret på måneder</li>
+                <li><strong>Tid på dagen:</strong> Morgen (8-11), eftermiddag (12-15)</li>
+                <li><strong>Ferieperioder:</strong> Sommerferie, vinterferie, påskeferie automatisk ekskluderet</li>
+            </ul>
+            <p><em>Denne opdeling gør det muligt at identificere specifikke problemer og optimeringsmuligheder.</em></p>
+            """,
+            
+            'compliance_scoring': """
+            <h3>✅ Compliance scoring</h3>
+            <p>Compliance-scoring giver et samlet mål for bygningens præstation:</p>
+            <ul>
+                <li><strong>Temperatur compliance:</strong> Baseret på tid inden for komfortzone</li>
+                <li><strong>CO₂ compliance:</strong> Baseret på ventilationseffektivitet</li>
+                <li><strong>Vægtning:</strong> Åbningstimer tæller mere end ikke-åbningstimer</li>
+                <li><strong>Sæsonkorrektion:</strong> Justering for sæsonvariationer</li>
+            </ul>
+            <p><em>Scoring hjælper med at prioritere forbedringsindsatser og sammenligne bygninger.</em></p>
+            """
+        }
+        
+        return explanations
+    
+    def _generate_issues_summary(self, basic_statistics: Dict[str, Dict[str, Any]]) -> Dict[str, Any]:
+        """Generate a summary of specific issues and affected rooms."""
+        issues_summary = {
+            'overheating_critical': {'rooms': [], 'threshold': '27°C', 'count': 0},
+            'overheating_moderate': {'rooms': [], 'threshold': '26°C', 'count': 0},
+            'undercooling': {'rooms': [], 'threshold': '20°C', 'count': 0},
+            'poor_co2_standard': {'rooms': [], 'threshold': '1000ppm', 'count': 0},
+            'poor_co2_critical': {'rooms': [], 'threshold': '2000ppm', 'count': 0},
+            'poor_ventilation': {'rooms': [], 'description': 'Utilstrækkelig ventilation', 'count': 0},
+            'total_rooms_analyzed': len(basic_statistics)
+        }
+        
+        for room_id, room_stats in basic_statistics.items():
+            # Get friendly room name
+            room_name = self._get_friendly_name(room_id)
+            
+            if 'compliance_analysis' not in room_stats:
+                continue
+                
+            compliance = room_stats['compliance_analysis']
+            
+            # Check opening hours data specifically (most relevant period)
+            temp_compliance = compliance.get('temperature_compliance', {})
+            co2_compliance = compliance.get('co2_compliance', {})
+            
+            opening_hours_temp = temp_compliance.get('opening_hours', {})
+            opening_hours_co2 = co2_compliance.get('opening_hours', {})
+            
+            # Critical overheating (>27°C more than 2% of opening hours)
+            if opening_hours_temp.get('above_27_percentage', 0) > 2.0:
+                issues_summary['overheating_critical']['rooms'].append({
+                    'name': room_name,
+                    'percentage': round(opening_hours_temp['above_27_percentage'], 1),
+                    'hours': opening_hours_temp.get('above_27_hours', 0)
+                })
+                issues_summary['overheating_critical']['count'] += 1
+            
+            # Moderate overheating (>26°C more than 10% of opening hours)  
+            elif opening_hours_temp.get('above_26_percentage', 0) > 10.0:
+                issues_summary['overheating_moderate']['rooms'].append({
+                    'name': room_name,
+                    'percentage': round(opening_hours_temp['above_26_percentage'], 1),
+                    'hours': opening_hours_temp.get('above_26_hours', 0)
+                })
+                issues_summary['overheating_moderate']['count'] += 1
+            
+            # Undercooling (<20°C more than 15% of opening hours)
+            if opening_hours_temp.get('below_20_percentage', 0) > 15.0:
+                issues_summary['undercooling']['rooms'].append({
+                    'name': room_name,
+                    'percentage': round(opening_hours_temp['below_20_percentage'], 1),
+                    'hours': opening_hours_temp.get('below_20_hours', 0)
+                })
+                issues_summary['undercooling']['count'] += 1
+            
+            # Poor CO2 standard (<80% below 1000ppm during opening hours)
+            if opening_hours_co2.get('below_1000_percentage', 100) < 80.0:
+                issues_summary['poor_co2_standard']['rooms'].append({
+                    'name': room_name,
+                    'percentage': round(opening_hours_co2['below_1000_percentage'], 1),
+                    'hours': opening_hours_co2.get('below_1000_hours', 0)
+                })
+                issues_summary['poor_co2_standard']['count'] += 1
+            
+            # Critical CO2 levels (<90% below 2000ppm during opening hours)
+            if opening_hours_co2.get('below_2000_percentage', 100) < 90.0:
+                issues_summary['poor_co2_critical']['rooms'].append({
+                    'name': room_name,
+                    'percentage': round(opening_hours_co2['below_2000_percentage'], 1),
+                    'hours': opening_hours_co2.get('below_2000_hours', 0)
+                })
+                issues_summary['poor_co2_critical']['count'] += 1
+            
+            # Poor ventilation (based on ventilation analysis)
+            ventilation = room_stats.get('ventilation', {})
+            if ventilation.get('ventilation_status') in ['Lav', 'Kritisk lav']:
+                issues_summary['poor_ventilation']['rooms'].append({
+                    'name': room_name,
+                    'status': ventilation.get('ventilation_status', 'Unknown'),
+                    'ach': round(ventilation.get('ach_mean', 0), 2)
+                })
+                issues_summary['poor_ventilation']['count'] += 1
+        
+        # Sort rooms by severity (highest percentage first)
+        for issue_type in ['overheating_critical', 'overheating_moderate', 'undercooling', 'poor_co2_standard', 'poor_co2_critical']:
+            issues_summary[issue_type]['rooms'].sort(key=lambda x: x.get('percentage', 0), reverse=True)
+        
+        # Sort ventilation by ACH (lowest first)
+        issues_summary['poor_ventilation']['rooms'].sort(key=lambda x: x.get('ach', 999))
+        
+        return issues_summary
+    
+    def _generate_building_summary(self, building_name: str, basic_statistics: Dict[str, Dict[str, Any]]) -> Dict[str, Any]:
+        """Generate key findings and recommendations summary for a building."""
+        building_summary = {
+            'key_findings': [],
+            'recommendations': [],
+            'total_rooms': 0,
+            'rooms_with_issues': 0
+        }
+        
+        # Filter statistics for this building
+        building_rooms = {}
+        for room_id, room_stats in basic_statistics.items():
+            room_name = self._get_friendly_name(room_id)
+            # Check if room belongs to this building
+            if building_name.lower().replace(' ', '_') in room_id.lower():
+                building_rooms[room_id] = room_stats
+        
+        building_summary['total_rooms'] = len(building_rooms)
+        
+        if not building_rooms:
+            return building_summary
+        
+        # Analyze aggregated findings
+        temp_issues = []
+        co2_issues = []
+        ventilation_issues = []
+        
+        for room_id, room_stats in building_rooms.items():
+            room_name = self._get_friendly_name(room_id)
+            
+            if 'compliance_analysis' not in room_stats:
+                continue
+            
+            compliance = room_stats['compliance_analysis']
+            temp_compliance = compliance.get('temperature_compliance', {})
+            co2_compliance = compliance.get('co2_compliance', {})
+            
+            # Check opening hours specifically
+            opening_hours_temp = temp_compliance.get('opening_hours', {})
+            opening_hours_co2 = co2_compliance.get('opening_hours', {})
+            
+            has_issues = False
+            
+            # Temperature issues
+            if opening_hours_temp.get('above_27_percentage', 0) > 2.0:
+                temp_issues.append(f"{room_name} ({opening_hours_temp['above_27_percentage']:.1f}% over 27°C)")
+                has_issues = True
+            elif opening_hours_temp.get('above_26_percentage', 0) > 10.0:
+                temp_issues.append(f"{room_name} ({opening_hours_temp['above_26_percentage']:.1f}% over 26°C)")
+                has_issues = True
+            elif opening_hours_temp.get('below_20_percentage', 0) > 15.0:
+                temp_issues.append(f"{room_name} ({opening_hours_temp['below_20_percentage']:.1f}% under 20°C)")
+                has_issues = True
+            
+            # CO2 issues
+            if opening_hours_co2.get('below_1000_percentage', 100) < 80.0:
+                co2_issues.append(f"{room_name} ({opening_hours_co2['below_1000_percentage']:.1f}% under 1000ppm)")
+                has_issues = True
+            
+            # Ventilation issues
+            ventilation = room_stats.get('ventilation', {})
+            if ventilation.get('ventilation_status') in ['Lav', 'Kritisk lav']:
+                ventilation_issues.append(f"{room_name} ({ventilation.get('ach_mean', 0):.2f} ACH)")
+                has_issues = True
+            
+            if has_issues:
+                building_summary['rooms_with_issues'] += 1
+        
+        # Generate key findings
+        if temp_issues:
+            if len(temp_issues) > 5:
+                building_summary['key_findings'].append(f"Temperaturproblemer i {len(temp_issues)} rum - se detaljeret analyse")
+            else:
+                building_summary['key_findings'].append(f"Temperaturproblemer: {', '.join(temp_issues[:3])}")
+        
+        if co2_issues:
+            if len(co2_issues) > 5:
+                building_summary['key_findings'].append(f"CO₂-problemer i {len(co2_issues)} rum - utilstrækkelig ventilation")
+            else:
+                building_summary['key_findings'].append(f"CO₂-problemer: {', '.join(co2_issues[:3])}")
+        
+        if ventilation_issues:
+            if len(ventilation_issues) > 5:
+                building_summary['key_findings'].append(f"Lav ventilation i {len(ventilation_issues)} rum")
+            else:
+                building_summary['key_findings'].append(f"Lav ventilation: {', '.join(ventilation_issues[:3])}")
+        
+        if not temp_issues and not co2_issues and not ventilation_issues:
+            building_summary['key_findings'].append("Ingen kritiske problemer identificeret - bygningen overholder de grundlæggende krav")
+        
+        # Generate recommendations based on issues
+        if temp_issues:
+            if any('over 27°C' in issue for issue in temp_issues):
+                building_summary['recommendations'].append("Høj prioritet: Installer solafskærmning og forbedre køling i overophedede rum")
+            elif any('over 26°C' in issue for issue in temp_issues):
+                building_summary['recommendations'].append("Medium prioritet: Overvej solafskærmning og ventilationsoptimering")
+            if any('under 20°C' in issue for issue in temp_issues):
+                building_summary['recommendations'].append("Juster varmeregulering for at undgå energispild og komfortproblemer")
+        
+        if co2_issues or ventilation_issues:
+            building_summary['recommendations'].append("Optimer ventilationssystem og kontroller luftskiftefrekvens")
+            building_summary['recommendations'].append("Overvej behovsstyret ventilation for bedre energieffektivitet")
+        
+        if len(building_summary['recommendations']) == 0:
+            building_summary['recommendations'].append("Fortsæt med den nuværende drift og overvågning")
+            building_summary['recommendations'].append("Regelmæssig kalibrering af sensorer anbefales")
+        
+        return building_summary
+    
+    def _calculate_building_metrics(self, building_name: str, basic_statistics: Dict[str, Dict[str, Any]]) -> Dict[str, float]:
+        """Calculate aggregated building-level metrics from room statistics."""
+        metrics = {
+            'co2_1000_compliance': 0.0,
+            'co2_2000_compliance': 0.0,
+            'temp_compliance': 0.0,
+            'total_rooms': 0
+        }
+        
+        # Filter statistics for this building
+        building_rooms = {}
+        for room_id, room_stats in basic_statistics.items():
+            # Check if room belongs to this building
+            if building_name.lower().replace(' ', '_') in room_id.lower():
+                building_rooms[room_id] = room_stats
+        
+        if not building_rooms:
+            return metrics
+        
+        metrics['total_rooms'] = len(building_rooms)
+        
+        # Aggregate compliance data from opening hours (most relevant period)
+        co2_1000_total = 0
+        co2_2000_total = 0
+        temp_compliance_total = 0
+        valid_rooms = 0
+        
+        for room_id, room_stats in building_rooms.items():
+            if 'compliance_analysis' not in room_stats:
+                continue
+                
+            compliance = room_stats['compliance_analysis']
+            temp_compliance = compliance.get('temperature_compliance', {})
+            co2_compliance = compliance.get('co2_compliance', {})
+            
+            # Use opening hours data for most relevant metrics
+            opening_hours_temp = temp_compliance.get('opening_hours', {})
+            opening_hours_co2 = co2_compliance.get('opening_hours', {})
+            
+            if opening_hours_co2:
+                co2_1000_total += float(opening_hours_co2.get('below_1000_percentage', 0))
+                co2_2000_total += float(opening_hours_co2.get('below_2000_percentage', 0))
+                
+            if opening_hours_temp:
+                # Calculate temperature compliance as comfort zone percentage
+                temp_compliance_total += float(opening_hours_temp.get('comfort_zone_20_26_percentage', 0))
+                
+            valid_rooms += 1
+        
+        # Calculate averages
+        if valid_rooms > 0:
+            metrics['co2_1000_compliance'] = round(co2_1000_total / valid_rooms, 1)
+            metrics['co2_2000_compliance'] = round(co2_2000_total / valid_rooms, 1) 
+            metrics['temp_compliance'] = round(temp_compliance_total / valid_rooms, 1)
+            # Add legacy key for overall metrics calculation
+            metrics['co2_compliance'] = metrics['co2_2000_compliance']  # Use 2000ppm as primary CO2 metric
+        
+        return metrics
+    
+    def _calculate_detailed_compliance(self, df: pd.DataFrame, room_id: str, config: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """Calculate detailed compliance analysis with separated temperature and CO2 thresholds and period analysis."""
         try:
+            # Extract thresholds from config
+            thresholds = self._extract_thresholds_from_config(config)
+            
             # Define analysis periods
-            periods = self._define_analysis_periods(df)
+            periods = self._define_analysis_periods(df, room_id)
             
             # Initialize results structure
             compliance_results = {
@@ -1341,11 +1749,11 @@ class HTKReportTemplate(BaseTemplate):
                 period_df = period_data['data']
                 
                 # Temperature compliance analysis with multiple thresholds
-                temp_compliance = self._analyze_temperature_compliance(period_df)
+                temp_compliance = self._analyze_temperature_compliance(period_df, thresholds)
                 compliance_results['temperature_compliance'][period_name] = temp_compliance
                 
                 # CO2 compliance analysis with separate thresholds
-                co2_compliance = self._analyze_co2_compliance(period_df)
+                co2_compliance = self._analyze_co2_compliance(period_df, thresholds)
                 compliance_results['co2_compliance'][period_name] = co2_compliance
             
             # Generate overall summary
@@ -1362,7 +1770,7 @@ class HTKReportTemplate(BaseTemplate):
                 'summary': {'error': f'Analysis failed: {str(e)}'}
             }
 
-    def _define_analysis_periods(self, df: pd.DataFrame) -> Dict[str, Dict[str, Any]]:
+    def _define_analysis_periods(self, df: pd.DataFrame, room_id: str) -> Dict[str, Dict[str, Any]]:
         """Define and extract different analysis periods from the data."""
         periods = {}
         
@@ -1372,13 +1780,29 @@ class HTKReportTemplate(BaseTemplate):
         try:
             # Ensure index is datetime
             if not isinstance(df.index, pd.DatetimeIndex):
-                df.index = pd.to_datetime(df.index)
+                try:
+                    df.index = pd.to_datetime(df.index)
+                except (ValueError, TypeError) as e:
+                    logger.warning(f"Could not convert index to datetime for room {room_id}: {e}")
+                    return periods
             
             # Add time-based columns for filtering
             df_copy = df.copy()
-            df_copy['hour'] = df_copy.index.hour
-            df_copy['weekday'] = df_copy.index.weekday  # 0=Monday, 6=Sunday
-            df_copy['month'] = df_copy.index.month
+            try:
+                # Try to access hour attribute first to verify it's a DatetimeIndex
+                if hasattr(df_copy.index, 'hour'):
+                    df_copy['hour'] = df_copy.index.hour
+                    df_copy['weekday'] = df_copy.index.weekday  # 0=Monday, 6=Sunday
+                    df_copy['month'] = df_copy.index.month
+                else:
+                    # Try to convert to DatetimeIndex if not already
+                    df_copy.index = pd.to_datetime(df_copy.index)
+                    df_copy['hour'] = df_copy.index.hour
+                    df_copy['weekday'] = df_copy.index.weekday  # 0=Monday, 6=Sunday
+                    df_copy['month'] = df_copy.index.month
+            except (AttributeError, TypeError, ValueError) as e:
+                logger.warning(f"Could not extract datetime components for room {room_id}: {e}")
+                return periods
             
             # Define periods
             # Opening hours (8:00-17:00, Monday-Friday, excluding summer holidays)
@@ -1434,8 +1858,11 @@ class HTKReportTemplate(BaseTemplate):
             logger.error(f"Error defining analysis periods: {e}")
             return periods
 
-    def _analyze_temperature_compliance(self, df: pd.DataFrame) -> Dict[str, Any]:
+    def _analyze_temperature_compliance(self, df: pd.DataFrame, thresholds: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """Analyze temperature compliance with multiple thresholds."""
+        if thresholds is None:
+            thresholds = {'temp_min': 20, 'temp_max': 26, 'temp_critical': 27, 'temp_optimal_min': 21, 'temp_optimal_max': 24}
+            
         if 'temperature' not in df.columns or df['temperature'].dropna().empty:
             return {
                 'total_hours': 0,
@@ -1461,32 +1888,40 @@ class HTKReportTemplate(BaseTemplate):
                 'mean_temperature': 0.0, 'max_temperature': 0.0, 'min_temperature': 0.0
             }
         
-        # Calculate different temperature thresholds
-        below_20 = (temp_data < 20).sum()
-        above_26 = (temp_data > 26).sum()
-        above_27 = (temp_data > 27).sum()
-        comfort_zone_20_26 = ((temp_data >= 20) & (temp_data <= 26)).sum()
-        optimal_zone_21_24 = ((temp_data >= 21) & (temp_data <= 24)).sum()
+        # Calculate different temperature thresholds using config values
+        temp_min = thresholds['temp_min']
+        temp_max = thresholds['temp_max']
+        temp_critical = thresholds['temp_critical']
+        temp_opt_min = thresholds['temp_optimal_min']
+        temp_opt_max = thresholds['temp_optimal_max']
+        
+        below_min = (temp_data < temp_min).sum()
+        above_max = (temp_data > temp_max).sum()
+        above_critical = (temp_data > temp_critical).sum()
+        comfort_zone = ((temp_data >= temp_min) & (temp_data <= temp_max)).sum()
+        optimal_zone = ((temp_data >= temp_opt_min) & (temp_data <= temp_opt_max)).sum()
         
         return {
             'total_hours': total_hours,
-            'below_20_hours': int(below_20),
-            'below_20_percentage': round((below_20 / total_hours) * 100, 1),
-            'above_26_hours': int(above_26),
-            'above_26_percentage': round((above_26 / total_hours) * 100, 1),
-            'above_27_hours': int(above_27),
-            'above_27_percentage': round((above_27 / total_hours) * 100, 1),
-            'comfort_zone_20_26_hours': int(comfort_zone_20_26),
-            'comfort_zone_20_26_percentage': round((comfort_zone_20_26 / total_hours) * 100, 1),
-            'optimal_zone_21_24_hours': int(optimal_zone_21_24),
-            'optimal_zone_21_24_percentage': round((optimal_zone_21_24 / total_hours) * 100, 1),
+            'below_20_hours': int(below_min),
+            'below_20_percentage': round((below_min / total_hours) * 100, 1),
+            'above_26_hours': int(above_max),
+            'above_26_percentage': round((above_max / total_hours) * 100, 1),
+            'above_27_hours': int(above_critical),
+            'above_27_percentage': round((above_critical / total_hours) * 100, 1),
+            'comfort_zone_20_26_hours': int(comfort_zone),
+            'comfort_zone_20_26_percentage': round((comfort_zone / total_hours) * 100, 1),
+            'optimal_zone_21_24_hours': int(optimal_zone),
+            'optimal_zone_21_24_percentage': round((optimal_zone / total_hours) * 100, 1),
             'mean_temperature': round(temp_data.mean(), 1),
             'max_temperature': round(temp_data.max(), 1),
             'min_temperature': round(temp_data.min(), 1)
         }
 
-    def _analyze_co2_compliance(self, df: pd.DataFrame) -> Dict[str, Any]:
+    def _analyze_co2_compliance(self, df: pd.DataFrame, thresholds: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """Analyze CO2 compliance with separate 1000ppm and 2000ppm thresholds."""
+        if thresholds is None:
+            thresholds = {'co2_standard': 1000, 'co2_max': 2000}
         if 'co2' not in df.columns or df['co2'].dropna().empty:
             return {
                 'total_hours': 0,
@@ -1512,25 +1947,28 @@ class HTKReportTemplate(BaseTemplate):
                 'mean_co2': 0.0, 'max_co2': 0.0, 'min_co2': 0.0
             }
         
-        # Calculate CO2 threshold compliance
-        below_1000 = (co2_data < 1000).sum()
-        below_2000 = (co2_data < 2000).sum()
-        above_1000 = (co2_data >= 1000).sum()
-        above_2000 = (co2_data >= 2000).sum()
-        between_1000_2000 = ((co2_data >= 1000) & (co2_data < 2000)).sum()
+        # Calculate CO2 threshold compliance using configurable thresholds
+        co2_standard = thresholds['co2_standard']  # Default 1000ppm
+        co2_acceptable = thresholds['co2_max']  # Default 2000ppm
+        
+        below_standard = (co2_data < co2_standard).sum()
+        below_acceptable = (co2_data < co2_acceptable).sum()
+        above_standard = (co2_data >= co2_standard).sum()
+        above_acceptable = (co2_data >= co2_acceptable).sum()
+        between_standard_acceptable = ((co2_data >= co2_standard) & (co2_data < co2_acceptable)).sum()
         
         return {
             'total_hours': total_hours,
-            'below_1000_hours': int(below_1000),
-            'below_1000_percentage': round((below_1000 / total_hours) * 100, 1),
-            'below_2000_hours': int(below_2000),
-            'below_2000_percentage': round((below_2000 / total_hours) * 100, 1),
-            'above_1000_hours': int(above_1000),
-            'above_1000_percentage': round((above_1000 / total_hours) * 100, 1),
-            'above_2000_hours': int(above_2000),
-            'above_2000_percentage': round((above_2000 / total_hours) * 100, 1),
-            'between_1000_2000_hours': int(between_1000_2000),
-            'between_1000_2000_percentage': round((between_1000_2000 / total_hours) * 100, 1),
+            'below_1000_hours': int(below_standard),
+            'below_1000_percentage': round((below_standard / total_hours) * 100, 1),
+            'below_2000_hours': int(below_acceptable),
+            'below_2000_percentage': round((below_acceptable / total_hours) * 100, 1),
+            'above_1000_hours': int(above_standard),
+            'above_1000_percentage': round((above_standard / total_hours) * 100, 1),
+            'above_2000_hours': int(above_acceptable),
+            'above_2000_percentage': round((above_acceptable / total_hours) * 100, 1),
+            'between_1000_2000_hours': int(between_standard_acceptable),
+            'between_1000_2000_percentage': round((between_standard_acceptable / total_hours) * 100, 1),
             'mean_co2': round(co2_data.mean(), 0),
             'max_co2': round(co2_data.max(), 0),
             'min_co2': round(co2_data.min(), 0)
@@ -1618,7 +2056,7 @@ class HTKReportTemplate(BaseTemplate):
                 relative_paths[key] = ""
         return relative_paths
     
-    def _prepare_template_context(self, report_data: Dict[str, Any], chart_paths: Dict[str, str], mapped_data: Optional[Dict[str, pd.DataFrame]] = None) -> Dict[str, Any]:
+    def _prepare_template_context(self, report_data: Dict[str, Any], chart_paths: Dict[str, str], mapped_data: Optional[Dict[str, pd.DataFrame]] = None, config: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """Prepare the context for the Jinja2 template."""
         
         # Convert absolute chart paths to relative paths for HTML
@@ -1627,7 +2065,7 @@ class HTKReportTemplate(BaseTemplate):
         # Calculate basic statistics from mapped data
         basic_statistics = {}
         if mapped_data:
-            basic_statistics = self._calculate_basic_statistics(mapped_data)
+            basic_statistics = self._calculate_basic_statistics(mapped_data, config)
         
         # Organize charts by building
         buildings_with_charts = []
@@ -1732,21 +2170,31 @@ class HTKReportTemplate(BaseTemplate):
             building_with_charts["friendly_name"] = building_friendly_name
             building_with_charts["rooms"] = rooms_with_charts
             
-            # Add separated CO2 compliance metrics for building
+            # Calculate proper building-level metrics from room statistics
+            building_metrics = self._calculate_building_metrics(building["name"], basic_statistics)
+            
             building_with_charts["co2_compliance_1000"] = {
-                "value": self._safe_get_numeric(building, "co2_1000_compliance", building.get("co2_performance", {}).get("value", 0)), 
+                "value": building_metrics.get("co2_1000_compliance", 0), 
                 "class": "neutral"
             }
             building_with_charts["co2_compliance_2000"] = {
-                "value": self._safe_get_numeric(building, "co2_2000_compliance", 0), 
+                "value": building_metrics.get("co2_2000_compliance", 0), 
+                "class": "neutral"
+            }
+            building_with_charts["temp_performance"] = {
+                "value": building_metrics.get("temp_compliance", 0),
                 "class": "neutral"
             }
             building_with_charts["co2_compliance_1000"]["class"] = self._get_compliance_class(building_with_charts["co2_compliance_1000"]["value"])
             building_with_charts["co2_compliance_2000"]["class"] = self._get_compliance_class(building_with_charts["co2_compliance_2000"]["value"])
+            building_with_charts["temp_performance"]["class"] = self._get_compliance_class(building_with_charts["temp_performance"]["value"])
             
             # Add building-level basic statistics (aggregate from rooms)
             if rooms_with_charts:
                 building_with_charts["basic_statistics"] = self._aggregate_building_statistics(rooms_with_charts)
+            
+            # Add building summary with key findings and recommendations
+            building_with_charts["summary"] = self._generate_building_summary(building["name"], basic_statistics)
             
             buildings_with_charts.append(building_with_charts)
         
@@ -1780,7 +2228,13 @@ class HTKReportTemplate(BaseTemplate):
             "implementation_phases": self._create_implementation_phases(report_data["recommendations"]),
             
             # Summary text
-            "executive_summary_text": self._generate_executive_summary_text(report_data)
+            "executive_summary_text": self._generate_executive_summary_text(report_data),
+            
+            # Analysis explanations  
+            "analysis_explanations": self._generate_analysis_explanations(),
+            
+            # Issues summary with affected rooms
+            "issues_summary": self._generate_issues_summary(basic_statistics) if basic_statistics else {}
         }
         
         return context
@@ -1899,12 +2353,25 @@ class HTKReportTemplate(BaseTemplate):
                 'quality_score': "Low"
             }
 
-        # TODO: Make sure this is working.
-        else:
-            avg_completeness = sum(room['completeness'] for room in rooms.values()) / len(rooms)
+        # Extract completeness values from room data_quality
+        completeness_values = []
+        for room in rooms.values():
+            if 'data_quality' in room and 'completeness' in room['data_quality']:
+                completeness_values.append(room['data_quality']['completeness'])
+            elif 'completeness' in room:  # Fallback for rooms with direct completeness field
+                completeness_values.append(room['completeness'])
+        
+        if not completeness_values:
+            return {
+                'completeness': 0,
+                'missing_periods': "No data",
+                'quality_score': "Low"
+            }
+            
+        avg_completeness = sum(completeness_values) / len(completeness_values)
 
         return {
-            'completeness': avg_completeness,
+            'completeness': round(avg_completeness, 1),
             'missing_periods': "Minimal gaps" if avg_completeness > 95 else "Some gaps",
             'quality_score': "High" if avg_completeness > 95 else ("Medium" if avg_completeness > 85 else "Low")
         }

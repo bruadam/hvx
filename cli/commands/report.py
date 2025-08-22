@@ -65,6 +65,11 @@ def report():
     default=['html'],
     help='Export formats (can be used multiple times)'
 )
+@click.option(
+    '--config-path',
+    type=click.Path(exists=True, path_type=Path),
+    help='Path to configuration file (defaults to config/tests.yaml)'
+)
 @click.pass_context
 def htk(
     ctx,
@@ -72,7 +77,8 @@ def htk(
     climate_dir: Optional[Path],
     output_dir: Optional[Path],
     buildings: List[str],
-    export_formats: List[str]
+    export_formats: List[str],
+    config_path: Optional[Path]
 ):
     """🏢 Generate Høje-Taastrup Kommune (HTK) specific report.
     
@@ -93,11 +99,13 @@ def htk(
     mapped_dir = mapped_dir or workspace / "output" / "mapped_data"
     climate_dir = climate_dir or workspace / "data" / "climate"
     output_dir = output_dir or workspace / "output" / "reports" / "htk"
+    config_path = config_path or workspace / "config" / "tests.yaml"
     
     console.print("🏢 [bold blue]Generating HTK Report...[/bold blue]")
     console.print(f"📂 Mapped data directory: {mapped_dir}")
     console.print(f"⛈️ Climate data directory: {climate_dir}")
     console.print(f"📤 Output directory: {output_dir}")
+    console.print(f"⚙️ Configuration file: {config_path}")
     console.print(f"🏗️ Buildings: {', '.join(buildings) if buildings else 'All'}")
     console.print(f"📄 Formats: {', '.join(export_formats)}")
     
@@ -125,6 +133,7 @@ def htk(
             mapped_dir=mapped_dir,
             climate_dir=climate_dir,
             output_dir=output_dir,
+            config_path=config_path,
             buildings=list(buildings) if buildings else None,
             export_formats=list(export_formats)
         )
@@ -183,6 +192,7 @@ if __name__ == "__main__":
     mapped_dir = workspace / "output" / "mapped_data"
     climate_dir = workspace / "data" / "climate"
     output_dir = workspace / "output" / "reports" / "htk"
+    config_path = workspace / "config" / "tests.yaml"
     buildings = []  # Empty list for all buildings
     export_formats = ['html']  # Default to HTML only for faster debugging
     
@@ -190,6 +200,7 @@ if __name__ == "__main__":
     console.print(f"📂 Mapped data directory: {mapped_dir}")
     console.print(f"⛈️ Climate data directory: {climate_dir}")
     console.print(f"📤 Output directory: {output_dir}")
+    console.print(f"⚙️ Configuration file: {config_path}")
     console.print(f"🏗️ Buildings: {', '.join(buildings) if buildings else 'All'}")
     console.print(f"📄 Formats: {', '.join(export_formats)}")
     
@@ -217,6 +228,7 @@ if __name__ == "__main__":
             mapped_dir=mapped_dir,
             climate_dir=climate_dir,
             output_dir=output_dir,
+            config_path=config_path,
             buildings=list(buildings) if buildings else None,
             export_formats=list(export_formats)
         )

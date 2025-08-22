@@ -643,6 +643,116 @@
         .toc a:hover {
             text-decoration: underline;
         }
+        
+        /* Methodology section styles */
+        .methodology-section {
+            font-size: 0.95em;
+            line-height: 1.6;
+        }
+        
+        .methodology-intro {
+            background-color: #f8f9fa;
+            border-left: 4px solid #0066cc;
+            padding: 15px 20px;
+            margin-bottom: 30px;
+            border-radius: 0 8px 8px 0;
+        }
+        
+        .explanation-block {
+            margin-bottom: 40px;
+            border-bottom: 1px solid #e0e0e0;
+            padding-bottom: 30px;
+        }
+        
+        .explanation-block:last-child {
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+        
+        .explanation-block h3 {
+            color: #0066cc;
+            margin-bottom: 15px;
+            font-size: 1.2em;
+        }
+        
+        .explanation-block ul {
+            padding-left: 20px;
+            margin-bottom: 15px;
+        }
+        
+        .explanation-block li {
+            margin-bottom: 8px;
+        }
+        
+        .explanation-block strong {
+            color: #333;
+        }
+        
+        .explanation-block em {
+            color: #666;
+            font-style: italic;
+        }
+        
+        /* Building Summary Styles */
+        .building-summary {
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            padding: 25px;
+            margin: 30px 0;
+            border-left: 4px solid #0066cc;
+        }
+        
+        .building-summary h4 {
+            color: #0066cc;
+            margin-top: 0;
+            margin-bottom: 20px;
+            font-size: 1.3em;
+        }
+        
+        .summary-overview {
+            margin-bottom: 25px;
+            padding: 15px;
+            background-color: white;
+            border-radius: 6px;
+            border: 1px solid #e0e0e0;
+        }
+        
+        .summary-overview p {
+            margin: 0;
+            color: #333;
+            font-size: 1.05em;
+        }
+        
+        .key-findings, .building-recommendations {
+            margin-bottom: 20px;
+        }
+        
+        .key-findings h5, .building-recommendations h5 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 1.1em;
+            border-bottom: 2px solid #e0e0e0;
+            padding-bottom: 8px;
+        }
+        
+        .findings-list, .recommendations-list {
+            margin: 0;
+            padding-left: 20px;
+        }
+        
+        .findings-list li, .recommendations-list li {
+            margin-bottom: 10px;
+            color: #555;
+            line-height: 1.5;
+        }
+        
+        .findings-list li::marker {
+            color: #0066cc;
+        }
+        
+        .recommendations-list li::marker {
+            color: #198754;
+        }
     </style>
 </head>
 <body>
@@ -650,7 +760,7 @@
     <div class="page">
         <div class="header">
             <h1>{{ report_title }}</h1>
-            <div class="subtitle">Indeklima vurdering praktik</div>
+            <div class="subtitle">Indeklima Analyse</div>
             <div class="meta">
                 <strong>Genereret:</strong> {{ generation_date }}<br>
                 <strong>Periode:</strong> {{ analysis_period }}<br>
@@ -737,7 +847,6 @@
                         <th>Datakomplethed (%)</th>
                         <th>Manglende Perioder</th>
                         <th>Kvalitetsscore</th>
-                        <th>Bemærkninger</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -747,7 +856,6 @@
                         <td>{{ building.completeness }}%</td>
                         <td>{{ building.missing_periods }}</td>
                         <td class="{{ building.quality_class }}">{{ building.quality_score }}</td>
-                        <td>{{ building.notes }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -800,14 +908,6 @@
                     <p><strong>Formål:</strong> Minimumskrav for acceptabel luftkvalitet</p>
                 </div>
             </div>
-
-            <h3>Kombinerede Kriterier</h3>
-            <div class="criteria-card">
-                <h4>Optimal Komfort</h4>
-                <p><strong>Beskrivelse:</strong> Procentdel af timer hvor temperatur er 21-24°C OG CO₂ er under 800 ppm</p>
-                <p><strong>Anvendelse:</strong> Åbningstid</p>
-                <p><strong>Formål:</strong> Identificerer perioder med optimal indeklima</p>
-            </div>
         </div>
     </div>
 
@@ -816,30 +916,6 @@
         <div class="chart-title">Datakomplethed Over Tid</div>
         <img src="{{ charts.data_completeness }}" alt="Datakomplethed">
         <div class="chart-caption">Oversigt over datakomplethed for hver bygning over analyseperioden</div>
-    </div>
-
-    <!-- Overview Charts Page -->
-    <div class="page">
-        <div class="page-header">
-            <h1>4. Oversigt Diagrammer</h1>
-            <div class="page-subtitle">Sammenligninger på tværs af bygninger</div>
-        </div>
-        
-        <div class="section" id="overview-charts">
-            <div class="charts-grid-2col">
-                <div class="chart">
-                    <div class="chart-title">Bygningssammenligning</div>
-                    <img src="{{ charts.building_comparison }}" alt="Building Comparison">
-                    <div class="chart-caption">Performance sammenligning</div>
-                </div>
-                
-                <div class="chart">
-                    <div class="chart-title">Månedlige Trends</div>
-                    <img src="{{ charts.monthly_trends }}" alt="Monthly Trends">
-                    <div class="chart-caption">Trends over tid</div>
-                </div>
-            </div>
-        </div>
     </div>
 
     <!-- Building Analysis Section -->
@@ -852,7 +928,7 @@
                 <div class="page-subtitle">Bygningsspecifik analyse og performance</div>
             </div>
 
-            <!-- Overall Building Performance with separated CO2 compliance -->
+            <!-- Overall Building Performance with properly calculated metrics -->
             <div class="metrics-grid">
                 <div class="metric-card">
                     <div class="metric-value {{ building.co2_compliance_1000.class }}">{{ building.co2_compliance_1000.value }}%</div>
@@ -940,84 +1016,44 @@
             </div>
             {% endif %}
 
-            <!-- Room Summaries -->
-            <h4>Rumoversigt og Anbefalinger</h4>
-            {% for room in building.rooms %}
-            <div class="room-summary">
-                <div class="room-summary-header">
-                    <h5>{{ room.friendly_name or room.name }}</h5>
+            <!-- Building Summary -->
+            {% if building.summary %}
+            <div class="building-summary">
+                <h4>📋 Vigtige Observationer for {{ building.friendly_name or building.name }}</h4>
+                <div class="summary-overview">
+                    <p><strong>Bygningen omfatter {{ building.summary.total_rooms }} rum, hvoraf {{ building.summary.rooms_with_issues }} har identificerede problemer.</strong></p>
                 </div>
-                <div class="room-summary-content">
-                    <div class="summary-metrics">
-                        {% if room.basic_statistics and room.basic_statistics.solar_shading %}
-                        <div class="summary-item">
-                            <span class="summary-label">Solafskærmning:</span>
-                            <span class="summary-value priority-{{ room.basic_statistics.solar_shading.priority|lower }}">{{ room.basic_statistics.solar_shading.priority }}</span>
-                        </div>
-                        {% else %}
-                        <div class="summary-item">
-                            <span class="summary-label">Solafskærmning:</span>
-                            <span class="summary-value priority-unknown">Analyseres</span>
-                        </div>
-                        {% endif %}
-                        
-                        {% if room.basic_statistics and room.basic_statistics.ventilation %}
-                        <div class="summary-item">
-                            <span class="summary-label">Ventilation (ACH):</span>
-                            <span class="summary-value">{{ "%.2f"|format(room.basic_statistics.ventilation.ach_mean) }} - {{ room.basic_statistics.ventilation.confidence }}</span>
-                        </div>
-                        <div class="summary-item">
-                            <span class="summary-label">Ventilationsstatus:</span>
-                            <span class="summary-value">{{ room.basic_statistics.ventilation.ventilation_status }}</span>
-                        </div>
-                        {% else %}
-                        <div class="summary-item">
-                            <span class="summary-label">Ventilation (ACH):</span>
-                            <span class="summary-value">{{ room.estimated_ach or "Analyseres" }}</span>
-                        </div>
-                        <div class="summary-item">
-                            <span class="summary-label">Ventilationsstatus:</span>
-                            <span class="summary-value">{{ room.ventilation_need or "Vurderes" }}</span>
-                        </div>
-                        {% endif %}
-                        
-                        <div class="summary-item">
-                            <span class="summary-label">CO₂ &lt;1000ppm:</span>
-                            <span class="summary-value {{ room.co2_1000_class }}">{{ room.co2_1000_compliance }}%</span>
-                        </div>
-                        <div class="summary-item">
-                            <span class="summary-label">CO₂ &lt;2000ppm:</span>
-                            <span class="summary-value {{ room.co2_2000_class }}">{{ room.co2_2000_compliance }}%</span>
-                        </div>
-                        <div class="summary-item">
-                            <span class="summary-label">Temperatur:</span>
-                            <span class="summary-value {{ room.temp_class }}">{{ room.temp_compliance }}%</span>
-                        </div>
-                    </div>
-                    
-                    {% if room.basic_statistics and (room.basic_statistics.ventilation or room.basic_statistics.solar_shading) %}
-                    <div class="summary-recommendations">
-                        {% if room.basic_statistics.ventilation and room.basic_statistics.ventilation.recommendation %}
-                        <div class="recommendation-item">
-                            <strong>Ventilation:</strong> {{ room.basic_statistics.ventilation.recommendation }}
-                        </div>
-                        {% endif %}
-                        {% if room.basic_statistics.solar_shading and room.basic_statistics.solar_shading.recommendation %}
-                        <div class="recommendation-item">
-                            <strong>Solafskærmning:</strong> {{ room.basic_statistics.solar_shading.recommendation }}
-                        </div>
-                        {% endif %}
-                    </div>
-                    {% endif %}
+                
+                {% if building.summary.key_findings %}
+                <div class="key-findings">
+                    <h5>🔍 Vigtige Observationer:</h5>
+                    <ul class="findings-list">
+                        {% for finding in building.summary.key_findings %}
+                        <li>{{ finding }}</li>
+                        {% endfor %}
+                    </ul>
                 </div>
+                {% endif %}
+                
+                {% if building.summary.recommendations %}
+                <div class="building-recommendations">
+                    <h5>💡 Anbefalinger:</h5>
+                    <ul class="recommendations-list">
+                        {% for recommendation in building.summary.recommendations %}
+                        <li>{{ recommendation }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
             </div>
-            {% endfor %}
+            {% endif %}
             
             <!-- Detailed Compliance Analysis -->
             <h4>Detaljeret Overholdelsesanalyse</h4>
             <div class="compliance-analysis">
                 {% for room in building.rooms %}
                 {% if room.basic_statistics and room.basic_statistics.compliance_analysis %}
+                <div class="page">
                 <div class="room-compliance-detail">
                     <h5>{{ room.friendly_name or room.name }}</h5>
                     
@@ -1084,7 +1120,6 @@
                                     <th>Periode</th>
                                     <th>&lt;1000ppm</th>
                                     <th>&lt;2000ppm</th>
-                                    <th>1000-2000ppm</th>
                                     <th>&gt;2000ppm</th>
                                     <th>Gennemsnit</th>
                                 </tr>
@@ -1100,10 +1135,6 @@
                                     <td class="{{ 'compliance-green' if co2_data.below_2000_percentage > 95 else 'compliance-yellow' if co2_data.below_2000_percentage > 85 else 'compliance-red' }}">
                                         {{ co2_data.below_2000_percentage }}%
                                         <small>({{ co2_data.below_2000_hours }}t)</small>
-                                    </td>
-                                    <td class="{{ 'compliance-yellow' if co2_data.between_1000_2000_percentage < 30 else 'compliance-red' }}">
-                                        {{ co2_data.between_1000_2000_percentage }}%
-                                        <small>({{ co2_data.between_1000_2000_hours }}t)</small>
                                     </td>
                                     <td class="{{ 'compliance-red' if co2_data.above_2000_percentage > 1 else 'compliance-green' }}">
                                         {{ co2_data.above_2000_percentage }}%
@@ -1425,6 +1456,28 @@
                 </li>
                 {% endfor %}
             </ol>
+        </div>
+    </div>
+
+    <!-- Analysis Methodology Explanations -->
+    <div class="page">
+        <div class="page-header">
+            <h1>📚 Analyse Metodologi</h1>
+            <div class="page-subtitle">Forklaring af analysemetoder og logik</div>
+        </div>
+        
+        <div class="methodology-section">
+            <div class="methodology-intro">
+                <p>Dette afsnit forklarer de forskellige analytiske tilgange og algoritmer, der anvendes i rapporten for at sikre transparens og forståelse af resultaterne.</p>
+            </div>
+            
+            <div class="explanations-container">
+                {% for key, explanation in analysis_explanations.items() %}
+                <div class="explanation-block">
+                    {{ explanation|safe }}
+                </div>
+                {% endfor %}
+            </div>
         </div>
     </div>
 

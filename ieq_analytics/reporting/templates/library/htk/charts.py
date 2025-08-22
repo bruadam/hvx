@@ -12,6 +12,7 @@ import pandas as pd
 from pathlib import Path
 from typing import Dict, List, Any, Optional
 import matplotlib.pyplot as plt
+from matplotlib.lines import Line2D
 import seaborn as sns
 from datetime import datetime
 import logging
@@ -38,6 +39,11 @@ class HTKChartGenerator:
         self.charts_dir = Path(charts_dir)
         self.charts_dir.mkdir(parents=True, exist_ok=True)
         self.config = config
+        
+        # Extract thresholds from config or use defaults
+        self.co2_threshold = getattr(config, 'co2_threshold', 1000)
+        self.temp_min = getattr(config, 'temp_min', 20)
+        self.temp_max = getattr(config, 'temp_max', 26)
 
         # Set up matplotlib for PDF-friendly charts
         plt.rcParams['font.size'] = 12
@@ -163,7 +169,7 @@ class HTKChartGenerator:
                 building_name, building_rooms, "opening_hours"
             )
             chart_paths[f'non_compliant_non_opening_{building_id}'] = self._generate_non_compliant_hours(
-                building_name, analysis_data.get(building_name, {}), "non_opening_hours"
+                building_name, building_rooms, "non_opening_hours"
             )
             
             # Room-specific charts using REAL mapped data
@@ -245,26 +251,26 @@ class HTKChartGenerator:
             co2_data = df['co2'].dropna()
             temp_data = df['temperature'].dropna()
             
-            # Calculate CO2 compliance (assuming 1000 ppm threshold)
-            co2_violations = (co2_data > 1000).sum()
+            # Calculate CO2 compliance using configurable threshold
+            co2_violations = int((co2_data > self.co2_threshold).sum())
             co2_total = len(co2_data)
             co2_compliance = ((co2_total - co2_violations) / co2_total * 100) if co2_total > 0 else 0
             
-            # Calculate temperature compliance (assuming 20-26°C range)
-            temp_violations = ((temp_data < 20) | (temp_data > 26)).sum()
+            # Calculate temperature compliance using configurable range
+            temp_violations = int(((temp_data < self.temp_min) | (temp_data > self.temp_max)).sum())
             temp_total = len(temp_data)
             temp_compliance = ((temp_total - temp_violations) / temp_total * 100) if temp_total > 0 else 0
             
             test_results['co2_1000_all_year_opening'] = {
                 'compliance_rate': co2_compliance,
-                'violations_count': int(co2_violations),
+                'violations_count': co2_violations,
                 'total_hours': co2_total,
                 'mean': float(co2_data.mean()) if len(co2_data) > 0 else 0
             }
             
             test_results['temp_comfort_all_year_opening'] = {
                 'compliance_rate': temp_compliance,
-                'violations_count': int(temp_violations),
+                'violations_count': temp_violations,
                 'total_hours': temp_total,
                 'mean': float(temp_data.mean()) if len(temp_data) > 0 else 0
             }
@@ -551,12 +557,17 @@ class HTKChartGenerator:
             # Buildings_dir[building] is a dict with room_id as keys and df as values
             room_completeness = []
             for room_id, df in buildings_dir[building].items():
-                # Ensure datetime index
-                if not isinstance(df.index, pd.DatetimeIndex):
+                # Ensure df is a DataFrame before resampling
+                if not isinstance(df, pd.DataFrame) or df.empty:
+                    logger.warning(f"Room {room_id} data is not a DataFrame or is empty: {type(df)}")
                     continue
-                
+                    
                 # Resample to hourly frequency, keeping NaN for missing data
-                df_hourly = df.resample('H').mean()
+                df_hourly = df.resample('h').mean()
+                
+                # Ensure datetime index for month access
+                if not isinstance(df_hourly.index, pd.DatetimeIndex):
+                    df_hourly.index = pd.to_datetime(df_hourly.index)
                 
                 # Calculate the completeness for each month
                 for month in months:
@@ -683,14 +694,26 @@ class HTKChartGenerator:
         """Generate non-compliant hours scatter plot."""
         fig, ax = plt.subplots(figsize=(12, 8))
 
-        # TODO: Implement data extraction for non-compliant hours without hardcoded values
+        # Extract data for non-compliant hours using configurable thresholds
         building_temps_values = {}
         building_co2_values = {}
         for room_name, room_df in building_data.items():
-            room_df = room_df.resample('h').mean()
-            building_temps_values[room_name] = room_df['temperature']
-            building_co2_values[room_name] = room_df['co2']
+            # Ensure room_df is a DataFrame and has the required columns
+            if isinstance(room_df, pd.DataFrame) and not room_df.empty:
+                if 'temperature' in room_df.columns and 'co2' in room_df.columns:
+                    room_df = room_df.resample('h').mean()
+                    building_temps_values[room_name] = room_df['temperature']
+                    building_co2_values[room_name] = room_df['co2']
+                else:
+                    logger.warning(f"Room {room_name} missing required columns (temperature, co2)")
+            else:
+                logger.warning(f"Room {room_name} data is not a DataFrame or is empty: {type(room_df)}")
 
+        # Check if we have any valid room data
+        if not building_temps_values or not building_co2_values:
+            logger.warning(f"No valid room data found for building {building_name}")
+            return self._generate_empty_chart(building_name)
+            
         # Combine all room data into a single DataFrame
         building_temps_df = pd.concat(building_temps_values, axis=1)
         building_co2_df = pd.concat(building_co2_values, axis=1)
@@ -699,8 +722,8 @@ class HTKChartGenerator:
         building_temps_avg = building_temps_df.mean(axis=1)
         building_co2_avg = building_co2_df.mean(axis=1)
 
-        # Filter non compliant hours with OR statements
-        non_compliant_mask = (building_co2_avg > 1000) | (building_temps_avg > 26)
+        # Filter non compliant hours with OR statements using configurable thresholds
+        non_compliant_mask = (building_co2_avg > self.co2_threshold) | (building_temps_avg > self.temp_max)
         if non_compliant_mask.sum() == 0:
             # If no non-compliant hours, return empty chart
             return self._generate_empty_chart(building_name)
@@ -724,13 +747,14 @@ class HTKChartGenerator:
         non_compliant_temps = non_compliant_temps[mask]
         
         # Create scatter plot
-        # Use a traffic light color map: green for temp <= 26, red for temp > 26
-        temp_colors = ['green' if t <= 26 else 'red' for t in non_compliant_temps]
+        # Use a traffic light color map: green for temp <= temp_max, red for temp > temp_max
+        temp_colors = ['green' if t <= self.temp_max else 'red' for t in non_compliant_temps]
         scatter = ax.scatter(non_compliant_hours, non_compliant_co2, c=temp_colors,
                      alpha=0.6, s=30, edgecolors='black', linewidth=0.5)
         
         # Add thresholds
-        ax.axhline(y=1000, color='red', linestyle='--', alpha=0.7, label='CO₂ Grænse (1000 ppm)')
+        ax.axhline(y=self.co2_threshold, color='red', linestyle='--', alpha=0.7, 
+                   label=f'CO₂ Grænse ({self.co2_threshold} ppm)')
         
         # Formatting
         ax.set_xlabel('Time (24-timer format)')
@@ -741,8 +765,10 @@ class HTKChartGenerator:
         
         # Custom legend for temperature colors
         legend_elements = [
-            Line2D([0], [0], marker='o', color='w', label='Temp ≤ 26°C', markerfacecolor='green', markersize=10),
-            Line2D([0], [0], marker='o', color='w', label='Temp > 26°C', markerfacecolor='red', markersize=10)
+            Line2D([0], [0], marker='o', color='w', label=f'Temp ≤ {self.temp_max}°C', 
+                   markerfacecolor='green', markersize=10),
+            Line2D([0], [0], marker='o', color='w', label=f'Temp > {self.temp_max}°C', 
+                   markerfacecolor='red', markersize=10)
         ]
         ax.legend(handles=legend_elements, loc='upper right')
         
@@ -805,35 +831,17 @@ class HTKChartGenerator:
                         transform=ax2.transAxes, fontsize=14)
                 ax2.set_xlabel('Dato')
         else:
-            # Fall back to sample data generation
-            dates = pd.date_range('2024-01-01', '2024-12-31', freq='D')
-            np.random.seed(hash(room_name) % 2**32)  # Consistent seed based on room name
-            
-            # Temperature data with seasonal variation
-            temp_base = 22 + 3 * np.sin(2 * np.pi * dates.dayofyear / 365.25)
-            temp_noise = np.random.normal(0, 1, len(dates))
-            temperature = temp_base + temp_noise
-            
-            # CO2 data with weekly pattern
-            co2_base = 800 + 200 * (dates.weekday < 5)  # Higher on weekdays
-            co2_noise = np.random.normal(0, 100, len(dates))
-            co2 = np.maximum(400, co2_base + co2_noise)
-            
-            # Plot temperature
-            ax1.plot(dates, temperature, color=self.colors['primary'], alpha=0.7, linewidth=1)
-            ax1.axhline(y=20, color='green', linestyle='--', alpha=0.7, label='Min Komfortgrænse')
-            ax1.axhline(y=26, color='red', linestyle='--', alpha=0.7, label='Maks Komfortgrænse')
+            # No data available - show empty charts with message
+            ax1.text(0.5, 0.5, 'Ingen temperaturdata tilgængelig', ha='center', va='center', 
+                    transform=ax1.transAxes, fontsize=14)
             ax1.set_ylabel('Temperatur (°C)')
-            ax1.set_title(f'Årlige Trends - {room_name} (Simulerede Data)')
-            ax1.legend()
+            ax1.set_title(f'Årlige Trends - {room_name}')
             ax1.grid(True, alpha=0.3)
             
-            # Plot CO2
-            ax2.plot(dates, co2, color=self.colors['secondary'], alpha=0.7, linewidth=1)
-            ax2.axhline(y=1000, color='red', linestyle='--', alpha=0.7, label='CO₂ Grænse')
+            ax2.text(0.5, 0.5, 'Ingen CO₂ data tilgængelig', ha='center', va='center', 
+                    transform=ax2.transAxes, fontsize=14)
             ax2.set_ylabel('CO₂ (ppm)')
             ax2.set_xlabel('Dato')
-            ax2.legend()
             ax2.grid(True, alpha=0.3)
         
         plt.tight_layout()
@@ -848,32 +856,78 @@ class HTKChartGenerator:
         """Generate seasonal box plots."""
         fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 6))
         
-        # Generate sample seasonal data
         seasons = ['Forår', 'Sommer', 'Efterår', 'Vinter']
         
+        # Check if we have real data
+        room_df = room_data.get(room_name, None)
+        if room_df is not None and not room_df.empty and 'temperature' in room_df.columns and 'co2' in room_df.columns:
+            # Use actual data - group by season
+            room_df_copy = room_df.copy()
+            
+            # Ensure datetime index for month access
+            if not isinstance(room_df_copy.index, pd.DatetimeIndex):
+                room_df_copy.index = pd.to_datetime(room_df_copy.index)
+            
+            # Add season column based on month
+            room_df_copy['month'] = room_df_copy.index.month
+            season_map = {12: 'Vinter', 1: 'Vinter', 2: 'Vinter',
+                         3: 'Forår', 4: 'Forår', 5: 'Forår',
+                         6: 'Sommer', 7: 'Sommer', 8: 'Sommer',
+                         9: 'Efterår', 10: 'Efterår', 11: 'Efterår'}
+            room_df_copy['season'] = room_df_copy['month'].map(season_map)
+            
+            # Temperature and CO2 data by season
+            temp_data_by_season = []
+            co2_data_by_season = []
+            
+            for season in seasons:
+                season_data = room_df_copy[room_df_copy['season'] == season]
+                temp_data_by_season.append(season_data['temperature'].dropna())
+                co2_data_by_season.append(season_data['co2'].dropna())
         
-        # Temperature box plot
-        bp1 = ax1.boxplot(temp_data, labels=seasons, patch_artist=True)
-        for patch in bp1['boxes']:
-            patch.set_facecolor(self.colors['primary'])
-            patch.set_alpha(0.7)
+            # Temperature box plot
+            if any(len(data) > 0 for data in temp_data_by_season):
+                bp1 = ax1.boxplot(temp_data_by_season, labels=seasons, patch_artist=True)
+                for patch in bp1['boxes']:
+                    patch.set_facecolor(self.colors['primary'])
+                    patch.set_alpha(0.7)
+            else:
+                ax1.text(0.5, 0.5, 'Ingen temperaturdata tilgængelig', ha='center', va='center', 
+                        transform=ax1.transAxes, fontsize=14)
         
-        ax1.axhline(y=20, color='green', linestyle='--', alpha=0.7)
-        ax1.axhline(y=26, color='red', linestyle='--', alpha=0.7)
-        ax1.set_ylabel('Temperatur (°C)')
-        ax1.set_title('Sæsonmæssige Temperaturmønstre')
-        ax1.grid(True, alpha=0.3)
+            ax1.axhline(y=20, color='green', linestyle='--', alpha=0.7)
+            ax1.axhline(y=26, color='red', linestyle='--', alpha=0.7)
+            ax1.set_ylabel('Temperatur (°C)')
+            ax1.set_title('Sæsonmæssige Temperaturmønstre')
+            ax1.grid(True, alpha=0.3)
+            
+            # CO2 box plot
+            if any(len(data) > 0 for data in co2_data_by_season):
+                bp2 = ax2.boxplot(co2_data_by_season, labels=seasons, patch_artist=True)
+                for patch in bp2['boxes']:
+                    patch.set_facecolor(self.colors['secondary'])
+                    patch.set_alpha(0.7)
+            else:
+                ax2.text(0.5, 0.5, 'Ingen CO₂ data tilgængelig', ha='center', va='center', 
+                        transform=ax2.transAxes, fontsize=14)
         
-        # CO2 box plot
-        bp2 = ax2.boxplot(co2_data, labels=seasons, patch_artist=True)
-        for patch in bp2['boxes']:
-            patch.set_facecolor(self.colors['secondary'])
-            patch.set_alpha(0.7)
-        
-        ax2.axhline(y=1000, color='red', linestyle='--', alpha=0.7)
-        ax2.set_ylabel('CO₂ (ppm)')
-        ax2.set_title('Sæsonmæssige CO₂ Mønstre')
-        ax2.grid(True, alpha=0.3)
+            ax2.axhline(y=1000, color='red', linestyle='--', alpha=0.7)
+            ax2.set_ylabel('CO₂ (ppm)')
+            ax2.set_title('Sæsonmæssige CO₂ Mønstre')
+            ax2.grid(True, alpha=0.3)
+        else:
+            # No data available - show empty charts with message
+            ax1.text(0.5, 0.5, 'Ingen temperaturdata tilgængelig', ha='center', va='center', 
+                    transform=ax1.transAxes, fontsize=14)
+            ax1.set_ylabel('Temperatur (°C)')
+            ax1.set_title('Sæsonmæssige Temperaturmønstre')
+            ax1.grid(True, alpha=0.3)
+            
+            ax2.text(0.5, 0.5, 'Ingen CO₂ data tilgængelig', ha='center', va='center', 
+                    transform=ax2.transAxes, fontsize=14)
+            ax2.set_ylabel('CO₂ (ppm)')
+            ax2.set_title('Sæsonmæssige CO₂ Mønstre')
+            ax2.grid(True, alpha=0.3)
         
         plt.suptitle(f'Sæsonmønstre - {room_name}', fontsize=14, fontweight='bold')
         plt.tight_layout()
@@ -890,38 +944,78 @@ class HTKChartGenerator:
         fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 10))
         
         hours = range(24)
-        np.random.seed(hash(room_name) % 2**32)
         
-        # Temperature daily pattern
-        temp_mean = 20 + 4 * np.sin(2 * np.pi * (np.array(hours) - 6) / 24)  # Peak at noon
-        temp_std = 1 + 0.5 * np.sin(2 * np.pi * np.array(hours) / 24)
-        temp_upper = temp_mean + 2 * temp_std
-        temp_lower = temp_mean - 2 * temp_std
-        
-        ax1.plot(hours, temp_mean, color=self.colors['primary'], linewidth=2, label='Gennemsnit')
-        ax1.fill_between(hours, temp_lower, temp_upper, color=self.colors['primary'], 
-                        alpha=0.3, label='95% Interval')
-        ax1.axhline(y=20, color='green', linestyle='--', alpha=0.7)
-        ax1.axhline(y=26, color='red', linestyle='--', alpha=0.7)
-        ax1.set_ylabel('Temperatur (°C)')
-        ax1.set_title(f'Daglig Distribution - {room_name}')
-        ax1.legend()
-        ax1.grid(True, alpha=0.3)
-        
-        # CO2 daily pattern (higher during work hours)
-        co2_mean = 600 + 400 * (np.array(hours) >= 8) * (np.array(hours) <= 16)
-        co2_std = 100 + 50 * (np.array(hours) >= 8) * (np.array(hours) <= 16)
-        co2_upper = co2_mean + 2 * co2_std
-        co2_lower = np.maximum(400, co2_mean - 2 * co2_std)
-        
-        ax2.plot(hours, co2_mean, color=self.colors['secondary'], linewidth=2, label='Gennemsnit')
-        ax2.fill_between(hours, co2_lower, co2_upper, color=self.colors['secondary'], 
-                        alpha=0.3, label='95% Interval')
-        ax2.axhline(y=1000, color='red', linestyle='--', alpha=0.7)
-        ax2.set_ylabel('CO₂ (ppm)')
-        ax2.set_xlabel('Time (24-timer format)')
-        ax2.legend()
-        ax2.grid(True, alpha=0.3)
+        # Check if we have real data
+        room_df = room_data.get(room_name, None)
+        if room_df is not None and not room_df.empty and 'temperature' in room_df.columns and 'co2' in room_df.columns:
+            # Use actual data - group by hour of day
+            room_df_copy = room_df.copy()
+            
+            # Ensure datetime index for hour access
+            if not isinstance(room_df_copy.index, pd.DatetimeIndex):
+                room_df_copy.index = pd.to_datetime(room_df_copy.index)
+            
+            room_df_copy['hour'] = room_df_copy.index.hour
+            
+            # Calculate hourly statistics
+            hourly_temp_stats = room_df_copy.groupby('hour')['temperature'].agg(['mean', 'std']).fillna(0)
+            hourly_co2_stats = room_df_copy.groupby('hour')['co2'].agg(['mean', 'std']).fillna(0)
+            
+            # Ensure we have data for all 24 hours (fill missing hours with NaN)
+            temp_mean = [hourly_temp_stats.loc[h, 'mean'] if h in hourly_temp_stats.index else np.nan for h in hours]
+            temp_std = [hourly_temp_stats.loc[h, 'std'] if h in hourly_temp_stats.index else np.nan for h in hours]
+            co2_mean = [hourly_co2_stats.loc[h, 'mean'] if h in hourly_co2_stats.index else np.nan for h in hours]
+            co2_std = [hourly_co2_stats.loc[h, 'std'] if h in hourly_co2_stats.index else np.nan for h in hours]
+            
+            # Plot temperature if we have data
+            if not all(np.isnan(temp_mean)):
+                temp_upper = [m + 2*s if not (np.isnan(m) or np.isnan(s)) else np.nan for m, s in zip(temp_mean, temp_std)]
+                temp_lower = [m - 2*s if not (np.isnan(m) or np.isnan(s)) else np.nan for m, s in zip(temp_mean, temp_std)]
+                
+                ax1.plot(hours, temp_mean, color=self.colors['primary'], linewidth=2, label='Gennemsnit')
+                ax1.fill_between(hours, temp_lower, temp_upper, color=self.colors['primary'], 
+                                alpha=0.3, label='95% Interval')
+            else:
+                ax1.text(0.5, 0.5, 'Ingen temperaturdata tilgængelig', ha='center', va='center', 
+                        transform=ax1.transAxes, fontsize=14)
+                
+            ax1.axhline(y=20, color='green', linestyle='--', alpha=0.7)
+            ax1.axhline(y=26, color='red', linestyle='--', alpha=0.7)
+            ax1.set_ylabel('Temperatur (°C)')
+            ax1.set_title(f'Daglig Distribution - {room_name}')
+            ax1.legend()
+            ax1.grid(True, alpha=0.3)
+            
+            # Plot CO2 if we have data
+            if not all(np.isnan(co2_mean)):
+                co2_upper = [m + 2*s if not (np.isnan(m) or np.isnan(s)) else np.nan for m, s in zip(co2_mean, co2_std)]
+                co2_lower = [m - 2*s if not (np.isnan(m) or np.isnan(s)) else np.nan for m, s in zip(co2_mean, co2_std)]
+                
+                ax2.plot(hours, co2_mean, color=self.colors['secondary'], linewidth=2, label='Gennemsnit')
+                ax2.fill_between(hours, co2_lower, co2_upper, color=self.colors['secondary'], 
+                                alpha=0.3, label='95% Interval')
+            else:
+                ax2.text(0.5, 0.5, 'Ingen CO₂ data tilgængelig', ha='center', va='center', 
+                        transform=ax2.transAxes, fontsize=14)
+                        
+            ax2.axhline(y=1000, color='red', linestyle='--', alpha=0.7)
+            ax2.set_ylabel('CO₂ (ppm)')
+            ax2.set_xlabel('Time (24-timer format)')
+            ax2.legend()
+            ax2.grid(True, alpha=0.3)
+        else:
+            # No data available - show empty charts with message
+            ax1.text(0.5, 0.5, 'Ingen temperaturdata tilgængelig', ha='center', va='center', 
+                    transform=ax1.transAxes, fontsize=14)
+            ax1.set_ylabel('Temperatur (°C)')
+            ax1.set_title(f'Daglig Distribution - {room_name}')
+            ax1.grid(True, alpha=0.3)
+            
+            ax2.text(0.5, 0.5, 'Ingen CO₂ data tilgængelig', ha='center', va='center', 
+                    transform=ax2.transAxes, fontsize=14)
+            ax2.set_ylabel('CO₂ (ppm)')
+            ax2.set_xlabel('Time (24-timer format)')
+            ax2.grid(True, alpha=0.3)
         
         plt.tight_layout()
         room_id = room_name.lower().replace(" ", "_")
@@ -1076,12 +1170,13 @@ class HTKChartGenerator:
 
         return float(np.mean(compliance_rates)) if compliance_rates else 0.0
 
+    # TODO: Fix violations extraction to take 
     def _extract_violations(self, room_data: Dict[str, Any], parameter: str) -> int:
         """Extract violation count from room data."""
         if 'test_results' not in room_data or parameter not in room_data['test_results']:
             return 0
         else:
-            return room_data['test_results'][parameter].get('violations', 0)
+            return room_data['test_results'][parameter].get('violations_count', 0)
         
     def _generate_temperature_heatmap(self, room_id: str, room_df: pd.DataFrame) -> str:
         """Generate temperature heatmap with months on x-axis and hours on y-axis."""
