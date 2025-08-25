@@ -164,6 +164,36 @@ class HTKChartGenerator:
         for building_name, building_rooms in buildings.items():
             building_id = building_name.lower().replace(" ", "_")
             
+            # Convert mapped data to analysis format for this building to generate top_issues
+            building_analysis_data = {
+                'building_name': building_name.replace('_', ' ').title(),
+                'rooms': {}
+            }
+            
+            # Create analysis-style room data for top_issues chart
+            for room_id, room_df in building_rooms.items():
+                if 'co2' in room_df.columns and 'temperature' in room_df.columns:
+                    co2_data = room_df['co2'].dropna()
+                    temp_data = room_df['temperature'].dropna()
+                    
+                    # Calculate basic compliance metrics for the room
+                    co2_violations = (co2_data > 1000).sum()
+                    temp_high_violations = (temp_data > 25).sum() 
+                    temp_low_violations = (temp_data < 18).sum()
+                    total_violations = co2_violations + temp_high_violations + temp_low_violations
+                    
+                    building_analysis_data['rooms'][room_id] = {
+                        'name': room_id,
+                        'violations': total_violations,
+                        'co2_violations': co2_violations,
+                        'temperature_violations': temp_high_violations + temp_low_violations
+                    }
+            
+            # Generate top_issues chart using analysis format
+            chart_paths[f'top_issues_{building_id}'] = self._generate_top_issues_chart(
+                building_name, building_analysis_data
+            )
+            
             # Building-level aggregated charts (use existing methods)
             chart_paths[f'non_compliant_opening_{building_id}'] = self._generate_non_compliant_hours(
                 building_name, building_rooms, "opening_hours"
@@ -493,50 +523,70 @@ class HTKChartGenerator:
     
     def _generate_building_comparison(self, analysis_data: Dict[str, Any]) -> str:
         """
-        Generate building performance comparison chart.
+        Generate building performance comparison chart with detailed metric breakdown.
         """
         buildings = []
-        co2_compliance = []
-        temp_compliance = []
+        co2_1000_compliance = []
+        co2_2000_compliance = []
+        temp_below_20 = []
+        temp_above_26 = []
+        temp_above_27 = []
         
         for building_name, building_data in analysis_data.items():
             buildings.append(building_name)
             
-            # Extract or calculate compliance rates
-            co2_rate = self._extract_compliance_rate(building_data, "co2_1000_all_year_opening")
-            temp_rate = self._extract_compliance_rate(building_data, "temp_comfort_all_year_opening")
+            # Extract detailed compliance rates
+            co2_1000_rate = self._extract_compliance_rate(building_data, "co2_1000_all_year_opening")
+            co2_2000_rate = self._extract_compliance_rate(building_data, "co2_2000_all_year_opening") 
             
-            co2_compliance.append(co2_rate)
-            temp_compliance.append(temp_rate)
+            # For temperature violations, we need to extract percentages instead of compliance
+            temp_below_20_rate = self._extract_temperature_violation_rate(building_data, "below_20")
+            temp_above_26_rate = self._extract_temperature_violation_rate(building_data, "above_26") 
+            temp_above_27_rate = self._extract_temperature_violation_rate(building_data, "above_27")
+            
+            co2_1000_compliance.append(co2_1000_rate)
+            co2_2000_compliance.append(co2_2000_rate)
+            temp_below_20.append(temp_below_20_rate)
+            temp_above_26.append(temp_above_26_rate)
+            temp_above_27.append(temp_above_27_rate)
         
-        # Create the chart
-        fig, ax = plt.subplots(figsize=(10, 6))
+        # Create the chart with more space for multiple bars
+        fig, ax = plt.subplots(figsize=(14, 8))
         
         x = np.arange(len(buildings))
-        width = 0.35
+        width = 0.15  # Narrower bars to fit 5 metrics
         
-        bars1 = ax.bar(x - width/2, co2_compliance, width, label='CO₂ (<1000 ppm) Overholdelse', 
-                  color=self.colors['co2'], alpha=0.8)
-        bars2 = ax.bar(x + width/2, temp_compliance, width, label='Temperatur (20-26 °C) Overholdelse', 
-                  color=self.colors['temperature'], alpha=0.8)
+        # Create bars for each metric
+        bars1 = ax.bar(x - 2*width, co2_1000_compliance, width, label='CO₂ <1000ppm (%)', 
+                      color=self.colors['good'], alpha=0.8)
+        bars2 = ax.bar(x - width, co2_2000_compliance, width, label='CO₂ <2000ppm (%)', 
+                      color=self.colors['co2'], alpha=0.8)
+        bars3 = ax.bar(x, temp_below_20, width, label='Temp. <20°C (%)', 
+                      color='#3498db', alpha=0.8)
+        bars4 = ax.bar(x + width, temp_above_26, width, label='Temp. >26°C (%)', 
+                      color=self.colors['warning'], alpha=0.8)
+        bars5 = ax.bar(x + 2*width, temp_above_27, width, label='Temp. >27°C (%)', 
+                      color=self.colors['danger'], alpha=0.8)
         
-        ax.set_xlabel('Bygninger')
-        ax.set_ylabel('Overholdelse (%)')
-        ax.set_title('Bygnings Performance Sammenligning')
+        ax.set_xlabel('Bygninger', fontsize=12)
+        ax.set_ylabel('Overholdelse/Overskridelse (%)', fontsize=12)
+        ax.set_title('Detaljeret Bygnings Performance Sammenligning', fontsize=14, fontweight='bold')
         ax.set_xticks(x)
-        ax.set_xticklabels(buildings, rotation=45, ha='right')
-        ax.legend()
-        ax.grid(False)
+        ax.set_xticklabels([b.replace('_', ' ').title() for b in buildings], rotation=45, ha='right')
+        ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
+        ax.grid(True, alpha=0.3)
+        ax.set_ylim(0, 100)
         
         # Add value labels on bars
-        for bars in [bars1, bars2]:
+        for bars in [bars1, bars2, bars3, bars4, bars5]:
             for bar in bars:
                 height = bar.get_height()
-                ax.annotate(f'{height:.1f}%',
-                           xy=(bar.get_x() + bar.get_width() / 2, height),
-                           xytext=(0, 3),
-                           textcoords="offset points",
-                           ha='center', va='bottom')
+                if height > 0:  # Only show labels for non-zero values
+                    ax.annotate(f'{height:.1f}%',
+                               xy=(bar.get_x() + bar.get_width() / 2, height),
+                               xytext=(0, 3),
+                               textcoords="offset points",
+                               ha='center', va='bottom', fontsize=8)
         
         plt.tight_layout()
         chart_path = self.charts_dir / "building_comparison.png"
@@ -1169,6 +1219,29 @@ class HTKChartGenerator:
         compliance_rates = [k['test_results'][test_name]['compliance_rate'] for k in building_data.get("rooms", {}).values() if 'test_results' in k and test_name in k['test_results']]
 
         return float(np.mean(compliance_rates)) if compliance_rates else 0.0
+
+    def _extract_temperature_violation_rate(self, building_data: Dict[str, Any], violation_type: str) -> float:
+        """Extract temperature violation rates from building data."""
+        violation_rates = []
+        
+        for room_data in building_data.get("rooms", {}).values():
+            if 'basic_statistics' in room_data and 'compliance_analysis' in room_data['basic_statistics']:
+                compliance = room_data['basic_statistics']['compliance_analysis']
+                temp_compliance = compliance.get('temperature_compliance', {})
+                opening_hours_data = temp_compliance.get('opening_hours', {})
+                
+                if violation_type == "below_20":
+                    rate = opening_hours_data.get('below_20_percentage', 0)
+                elif violation_type == "above_26":
+                    rate = opening_hours_data.get('above_26_percentage', 0)
+                elif violation_type == "above_27":
+                    rate = opening_hours_data.get('above_27_percentage', 0)
+                else:
+                    rate = 0
+                    
+                violation_rates.append(rate)
+        
+        return float(np.mean(violation_rates)) if violation_rates else 0.0
 
     # TODO: Fix violations extraction to take 
     def _extract_violations(self, room_data: Dict[str, Any], parameter: str) -> int:

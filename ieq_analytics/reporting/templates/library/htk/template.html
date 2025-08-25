@@ -14,14 +14,20 @@
             padding: 20px;
         }
         
-        /* PDF-friendly page structure */
+        /* PDF-friendly page structure with improved spacing */
+        @page {
+            margin: 2cm 2cm 3cm 2cm;
+        }
+        
         .page {
             page-break-after: always;
-            min-height: 90vh;
+            min-height: 85vh;
+            padding-bottom: 2cm;
         }
         
         .page:last-child {
             page-break-after: auto;
+            min-height: auto;
         }
         
         .page-header {
@@ -69,34 +75,70 @@
         .section {
             margin-bottom: 40px;
             page-break-inside: avoid;
+            margin-bottom: 30px;
         }
         
         .section-full-page {
             page-break-before: always;
             page-break-after: always;
-            min-height: 80vh;
+            min-height: 75vh;
+            padding-bottom: 2cm;
+        }
+        
+        /* Improved page break controls */
+        .room, .building-summary, .recommendations {
+            page-break-inside: avoid;
+            margin-bottom: 25px;
+        }
+        
+        .room-compliance-detail {
+            page-break-inside: avoid;
         }
         
         .section h2 {
             color: #0066cc;
-            border-bottom: 2px solid #e0e0e0;
+            border-bottom: 3px solid #0066cc;
             padding-bottom: 10px;
-            margin-bottom: 20px;
+            margin-bottom: 25px;
+            margin-top: 35px;
             font-size: 1.8em;
+            font-weight: 600;
         }
         
         .section h3 {
             color: #004499;
+            border-bottom: 2px solid #004499;
+            padding-bottom: 8px;
             margin-top: 30px;
-            margin-bottom: 15px;
+            margin-bottom: 18px;
             font-size: 1.4em;
+            font-weight: 500;
         }
         
         .section h4 {
             color: #333;
+            border-bottom: 1px solid #ccc;
+            padding-bottom: 5px;
             margin-top: 25px;
-            margin-bottom: 10px;
+            margin-bottom: 12px;
             font-size: 1.2em;
+            font-weight: 500;
+        }
+        
+        .section h5 {
+            color: #555;
+            margin-top: 20px;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+            font-weight: 500;
+        }
+        
+        .section h6 {
+            color: #666;
+            margin-top: 15px;
+            margin-bottom: 8px;
+            font-size: 1em;
+            font-weight: 500;
         }
         
         /* Chart layouts optimized for PDF pages */
@@ -207,7 +249,7 @@
             border-radius: 6px;
             padding: 15px;
             margin-bottom: 20px;
-            border-left: 4px solid #0066cc;
+            border: 1px solid #0066cc;
         }
         
         .room-header {
@@ -223,15 +265,15 @@
         
         .metrics-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-            gap: 8px;
-            margin: 15px 0;
+            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+            gap: 4px;
+            margin: 10px 0;
         }
         
         .metric-card {
             background-color: white;
             border-radius: 4px;
-            padding: 8px 6px;
+            padding: 2px 2px;
             border: 1px solid #ddd;
             text-align: center;
             position: relative;
@@ -305,7 +347,7 @@
         
         .recommendations {
             background-color: #fff3cd;
-            border: 1px solid #ffeaa7;
+            border: 2px solid #ffc107;
             border-radius: 6px;
             padding: 20px;
             margin: 20px 0;
@@ -326,12 +368,39 @@
             border-radius: 4px;
             padding: 10px;
             margin-bottom: 10px;
-            border-left: 4px solid #ffc107;
+            border: 2px solid #ffc107;
         }
         
-        .priority-high { border-left-color: #dc3545 !important; }
-        .priority-medium { border-left-color: #ffc107 !important; }
-        .priority-low { border-left-color: #28a745 !important; }
+        .priority-high { border-color: #dc3545 !important; }
+        .priority-medium { border-color: #ffc107 !important; }
+        .priority-low { border-color: #28a745 !important; }
+        
+        /* Observations styling - similar to recommendations but with different colors */
+        .observations {
+            background-color: #e3f2fd;
+            border: 2px solid #2196f3;
+            border-radius: 6px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        
+        .observations h4 {
+            color: #1565c0;
+            margin-top: 0;
+        }
+        
+        .observation-list {
+            list-style-type: none;
+            padding: 0;
+        }
+        
+        .observation-list li {
+            background-color: white;
+            border-radius: 4px;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 2px solid #2196f3;
+        }
         
         /* Room Summary Styles */
         .room-summary {
@@ -339,7 +408,7 @@
             border-radius: 6px;
             padding: 15px;
             margin-bottom: 15px;
-            border-left: 4px solid #0066cc;
+            border: 1px solid #0066cc;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
         
@@ -419,7 +488,7 @@
             border-radius: 6px;
             padding: 20px;
             margin-bottom: 20px;
-            border-left: 4px solid #28a745;
+            border: 2px solid #28a745;
         }
         
         .room-compliance-detail h5 {
@@ -524,7 +593,7 @@
             background-color: white;
             padding: 15px;
             border-radius: 6px;
-            border-left: 4px solid #ffc107;
+            border: 1px solid #ffc107;
         }
         
         .compliance-summary ul {
@@ -593,12 +662,14 @@
         }
         
         .footer {
-            margin-top: 50px;
+            margin-top: 60px;
             text-align: center;
             font-size: 0.9em;
             color: #666;
             border-top: 1px solid #e0e0e0;
             padding-top: 20px;
+            page-break-inside: avoid;
+            margin-bottom: 20px;
         }
         
         @media print {
@@ -644,6 +715,115 @@
             text-decoration: underline;
         }
         
+        .toc .no-link {
+            color: #333;
+            font-weight: normal;
+        }
+        
+        /* Performance ranking and categorization styles */
+        .performance-summary {
+            background-color: #f8f9fa;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 6px;
+            border: 1px solid #dee2e6;
+        }
+        
+        .performance-ranking {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 10px;
+        }
+        
+        .rank-badge, .category-badge, .recommendation-badge {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.9em;
+            font-weight: 500;
+        }
+        
+        .rank-badge {
+            background-color: #6c757d;
+            color: white;
+        }
+        
+        .category-excellent { background-color: #28a745; color: white; }
+        .category-good { background-color: #6f42c1; color: white; }
+        .category-fair { background-color: #ffc107; color: black; }
+        .category-poor { background-color: #fd7e14; color: white; }
+        .category-critical { background-color: #dc3545; color: white; }
+        
+        .rec-critical_co2 { background-color: #dc3545; color: white; }
+        .rec-ventilation_improvement { background-color: #fd7e14; color: white; }
+        .rec-temperature_control { background-color: #ffc107; color: black; }
+        .rec-minor_improvements { background-color: #17a2b8; color: white; }
+        .rec-well_performing { background-color: #28a745; color: white; }
+        
+        /* Ventilation grade badges */
+        .ventilation-badge {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.9em;
+            font-weight: 600;
+            margin-left: 5px;
+        }
+        .vent-A { background-color: #28a745; color: white; }
+        .vent-B { background-color: #6f42c1; color: white; }
+        .vent-C { background-color: #ffc107; color: black; }
+        .vent-D { background-color: #fd7e14; color: white; }
+        .vent-E { background-color: #dc3545; color: white; }
+        .vent-F { background-color: #6c757d; color: white; }
+        
+        .performance-score {
+            font-size: 0.95em;
+            color: #666;
+            font-weight: 500;
+        }
+        
+        /* Ventilation analysis styles */
+        .ventilation-status h5 {
+            margin-top: 15px;
+            margin-bottom: 8px;
+            color: #0066cc;
+        }
+        
+        .ventilation-status p {
+            margin: 0;
+            line-height: 1.5;
+            color: #555;
+        }
+        
+        /* Room section organization styles */
+        .room > h4 {
+            border-top: 2px solid #e9ecef;
+            padding-top: 20px;
+            margin-top: 30px;
+        }
+        
+        .room > h4:first-of-type {
+            border-top: none;
+            padding-top: 0;
+            margin-top: 20px;
+        }
+        
+        /* Detailed compliance analysis spacing */
+        .period-summary {
+            background-color: #f8f9fa;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 6px;
+        }
+        
+        .period-list {
+            margin: 10px 0 0 0;
+            padding-left: 20px;
+        }
+        
+        .period-list li {
+            margin-bottom: 5px;
+        }
+        
         /* Methodology section styles */
         .methodology-section {
             font-size: 0.95em;
@@ -652,10 +832,10 @@
         
         .methodology-intro {
             background-color: #f8f9fa;
-            border-left: 4px solid #0066cc;
+            border: 2px solid #0066cc;
             padding: 15px 20px;
             margin-bottom: 30px;
-            border-radius: 0 8px 8px 0;
+            border-radius: 8px;
         }
         
         .explanation-block {
@@ -699,7 +879,7 @@
             border-radius: 8px;
             padding: 25px;
             margin: 30px 0;
-            border-left: 4px solid #0066cc;
+            border: 2px solid #0066cc;
         }
         
         .building-summary h4 {
@@ -787,7 +967,7 @@
                         {% endfor %}
                     </ul>
                 </li>
-                <li><a href="#overview-charts">4. Oversigt Diagrammer</a></li>
+                <li><span class="no-link">4. Oversigt Diagrammer</span></li>
                 <li><a href="#recommendations">5. Anbefalinger</a></li>
             </ul>
         </div>
@@ -853,7 +1033,7 @@
                     {% for building in data_quality %}
                     <tr>
                         <td>{{ building.friendly_name or building.name }}</td>
-                        <td>{{ building.completeness }}%</td>
+                        <td>{{ "%.1f"|format(building.completeness) }}%</td>
                         <td>{{ building.missing_periods }}</td>
                         <td class="{{ building.quality_class }}">{{ building.quality_score }}</td>
                     </tr>
@@ -939,8 +1119,16 @@
                     <div class="metric-label">CO₂ &lt;2000ppm</div>
                 </div>
                 <div class="metric-card">
-                    <div class="metric-value {{ building.temp_performance.class }}">{{ building.temp_performance.value }}%</div>
-                    <div class="metric-label">Temperatur Overholdelse</div>
+                    <div class="metric-value {{ 'danger' if building.temp_above_26 > 10 else 'warning' if building.temp_above_26 > 5 else 'good' }}">{{ "%.1f"|format(building.temp_above_26) }}%</div>
+                    <div class="metric-label">Temp. &gt;26°C</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value {{ 'danger' if building.temp_above_27 > 5 else 'warning' if building.temp_above_27 > 1 else 'good' }}">{{ "%.1f"|format(building.temp_above_27) }}%</div>
+                    <div class="metric-label">Temp. &gt;27°C</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value {{ 'danger' if building.temp_below_20 > 15 else 'warning' if building.temp_below_20 > 5 else 'good' }}">{{ "%.1f"|format(building.temp_below_20) }}%</div>
+                    <div class="metric-label">Temp. &lt;20°C</div>
                 </div>
                 <div class="metric-card">
                     <div class="metric-value">{{ building.room_count }}</div>
@@ -962,12 +1150,12 @@
             </div>
 
             <!-- Top Issues -->
-            <h4>Rum med Flest Problemer</h4>
+            <!-- <h4>Rum med Flest Problemer</h4>
             <div class="chart">
                 <div class="chart-title">Top 10 Rum med CO₂ og Temperatur Problemer</div>
                 <img src="{{ building.charts.top_issues }}" alt="Top Issues - {{ building.friendly_name or building.name }}">
                 <div class="chart-caption">Rum ranket efter antal overskridelser af grænseværdier</div>
-            </div>
+            </div> -->
 
             <!-- Overall Building Performance with separated CO2 compliance -->
             <div class="metrics-grid">
@@ -980,8 +1168,16 @@
                     <div class="metric-label">CO₂ &lt;2000ppm</div>
                 </div>
                 <div class="metric-card">
-                    <div class="metric-value {{ building.temp_performance.class }}">{{ building.temp_performance.value }}%</div>
-                    <div class="metric-label">Temperatur Overholdelse</div>
+                    <div class="metric-value {{ 'danger' if building.temp_above_26 > 10 else 'warning' if building.temp_above_26 > 5 else 'good' }}">{{ "%.1f"|format(building.temp_above_26) }}%</div>
+                    <div class="metric-label">Temp. &gt;26°C</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value {{ 'danger' if building.temp_above_27 > 5 else 'warning' if building.temp_above_27 > 1 else 'good' }}">{{ "%.1f"|format(building.temp_above_27) }}%</div>
+                    <div class="metric-label">Temp. &gt;27°C</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value {{ 'danger' if building.temp_below_20 > 15 else 'warning' if building.temp_below_20 > 5 else 'good' }}">{{ "%.1f"|format(building.temp_below_20) }}%</div>
+                    <div class="metric-label">Temp. &lt;20°C</div>
                 </div>
                 <div class="metric-card">
                     <div class="metric-value">{{ building.room_count }}</div>
@@ -1047,167 +1243,98 @@
                 {% endif %}
             </div>
             {% endif %}
-            
-            <!-- Detailed Compliance Analysis -->
-            <h4>Detaljeret Overholdelsesanalyse</h4>
-            <div class="compliance-analysis">
-                {% for room in building.rooms %}
-                {% if room.basic_statistics and room.basic_statistics.compliance_analysis %}
-                <div class="page">
-                <div class="room-compliance-detail">
-                    <h5>{{ room.friendly_name or room.name }}</h5>
-                    
-                    <!-- Period Analysis Summary -->
-                    <div class="period-summary">
-                        <h6>Analyserede Perioder:</h6>
-                        <ul class="period-list">
-                            {% for period_name, period_info in room.basic_statistics.compliance_analysis.period_analysis.items() %}
-                            <li><strong>{{ period_info.description }}:</strong> {{ period_info.total_hours }} timer</li>
-                            {% endfor %}
-                        </ul>
-                    </div>
-                    
-                    <!-- Temperature Compliance Tables -->
-                    <div class="compliance-tables">
-                        <h6>Temperatur Overholdelse:</h6>
-                        <table class="compliance-table">
-                            <thead>
-                                <tr>
-                                    <th>Periode</th>
-                                    <th>&lt;20°C</th>
-                                    <th>20-26°C (Komfort)</th>
-                                    <th>21-24°C (Optimal)</th>
-                                    <th>&gt;26°C</th>
-                                    <th>&gt;27°C</th>
-                                    <th>Gennemsnit</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for period_name, temp_data in room.basic_statistics.compliance_analysis.temperature_compliance.items() %}
-                                <tr>
-                                    <td>{{ room.basic_statistics.compliance_analysis.period_analysis[period_name].description.split(':')[0] }}</td>
-                                    <td class="{{ 'compliance-red' if temp_data.below_20_percentage > 10 else 'compliance-green' }}">
-                                        {{ temp_data.below_20_percentage }}%
-                                        <small>({{ temp_data.below_20_hours }}t)</small>
-                                    </td>
-                                    <td class="{{ 'compliance-green' if temp_data.comfort_zone_20_26_percentage > 80 else 'compliance-yellow' if temp_data.comfort_zone_20_26_percentage > 60 else 'compliance-red' }}">
-                                        {{ temp_data.comfort_zone_20_26_percentage }}%
-                                        <small>({{ temp_data.comfort_zone_20_26_hours }}t)</small>
-                                    </td>
-                                    <td class="{{ 'compliance-green' if temp_data.optimal_zone_21_24_percentage > 60 else 'compliance-yellow' if temp_data.optimal_zone_21_24_percentage > 40 else 'compliance-red' }}">
-                                        {{ temp_data.optimal_zone_21_24_percentage }}%
-                                        <small>({{ temp_data.optimal_zone_21_24_hours }}t)</small>
-                                    </td>
-                                    <td class="{{ 'compliance-red' if temp_data.above_26_percentage > 10 else 'compliance-yellow' if temp_data.above_26_percentage > 5 else 'compliance-green' }}">
-                                        {{ temp_data.above_26_percentage }}%
-                                        <small>({{ temp_data.above_26_hours }}t)</small>
-                                    </td>
-                                    <td class="{{ 'compliance-red' if temp_data.above_27_percentage > 5 else 'compliance-yellow' if temp_data.above_27_percentage > 1 else 'compliance-green' }}">
-                                        {{ temp_data.above_27_percentage }}%
-                                        <small>({{ temp_data.above_27_hours }}t)</small>
-                                    </td>
-                                    <td>{{ temp_data.mean_temperature }}°C</td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                        
-                        <!-- CO2 Compliance Table -->
-                        <h6>CO₂ Overholdelse:</h6>
-                        <table class="compliance-table">
-                            <thead>
-                                <tr>
-                                    <th>Periode</th>
-                                    <th>&lt;1000ppm</th>
-                                    <th>&lt;2000ppm</th>
-                                    <th>&gt;2000ppm</th>
-                                    <th>Gennemsnit</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for period_name, co2_data in room.basic_statistics.compliance_analysis.co2_compliance.items() %}
-                                <tr>
-                                    <td>{{ room.basic_statistics.compliance_analysis.period_analysis[period_name].description.split(':')[0] }}</td>
-                                    <td class="{{ 'compliance-green' if co2_data.below_1000_percentage > 80 else 'compliance-yellow' if co2_data.below_1000_percentage > 60 else 'compliance-red' }}">
-                                        {{ co2_data.below_1000_percentage }}%
-                                        <small>({{ co2_data.below_1000_hours }}t)</small>
-                                    </td>
-                                    <td class="{{ 'compliance-green' if co2_data.below_2000_percentage > 95 else 'compliance-yellow' if co2_data.below_2000_percentage > 85 else 'compliance-red' }}">
-                                        {{ co2_data.below_2000_percentage }}%
-                                        <small>({{ co2_data.below_2000_hours }}t)</small>
-                                    </td>
-                                    <td class="{{ 'compliance-red' if co2_data.above_2000_percentage > 1 else 'compliance-green' }}">
-                                        {{ co2_data.above_2000_percentage }}%
-                                        <small>({{ co2_data.above_2000_hours }}t)</small>
-                                    </td>
-                                    <td>{{ co2_data.mean_co2 }}ppm</td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                    
-                    <!-- Key Findings and Recommendations -->
-                    {% if room.basic_statistics.compliance_analysis.summary.key_findings %}
-                    <div class="compliance-summary">
-                        <h6>Vigtige Observationer:</h6>
-                        <ul>
-                            {% for finding in room.basic_statistics.compliance_analysis.summary.key_findings %}
-                            <li>{{ finding }}</li>
-                            {% endfor %}
-                        </ul>
-                        
-                        <h6>Anbefalinger:</h6>
-                        <ul>
-                            {% for recommendation in room.basic_statistics.compliance_analysis.summary.recommendations %}
-                            <li>{{ recommendation }}</li>
-                            {% endfor %}
-                        </ul>
-                    </div>
-                    {% endif %}
-                </div>
-                {% endif %}
-                {% endfor %}
-            </div>
-        </div>
-
         <!-- Building Top Issues Chart - Full Page -->
-        <div class="chart-full-page">
+        <!-- <div class="chart-full-page">
             <div class="chart-title">Top 10 Rum med CO₂ og Temperatur Problemer - {{ building.friendly_name or building.name }}</div>
             <img src="{{ building.charts.top_issues }}" alt="Top Issues - {{ building.friendly_name or building.name }}">
             <div class="chart-caption">Rum ranket efter antal overskridelser af grænseværdier</div>
-        </div>
+        </div> -->
 
-        <!-- Building Room Analysis -->
+        <!-- Comprehensive Room Analysis - Performance, Compliance, Graphs & Tables -->
         {% for room in building.rooms %}
         <div class="page">
             <div class="page-header">
                 <h1>{{ building.friendly_name or building.name }} - {{ room.friendly_name or room.name }}</h1>
                 <div class="page-subtitle">Rumspecifik analyse og trends</div>
+                
+                <!-- Performance Ranking and Category -->
+                {% if room.performance_rank %}
+                <div class="performance-summary">
+                    <div class="performance-ranking">
+                        <span class="rank-badge rank-{{ room.performance_category }}">
+                            Placering: {{ room.performance_rank }}/{{ room.performance_rank_total }}
+                        </span>
+                        <span class="category-badge category-{{ room.performance_category }}">
+                            {{ room.performance_category|title }}
+                        </span>
+                        <span class="recommendation-badge rec-{{ room.recommendation_category }}">
+                            {% if room.recommendation_category == "critical_co2" %}Kritisk CO₂
+                            {% elif room.recommendation_category == "ventilation_improvement" %}Ventilationsforbedring
+                            {% elif room.recommendation_category == "temperature_control" %}Temperaturkontrol  
+                            {% elif room.recommendation_category == "minor_improvements" %}Mindre forbedringer
+                            {% else %}Velfungerende{% endif %}
+                        </span>
+                        {% if room.ventilation and room.ventilation.ventilation_grade and room.ventilation.periods_analyzed > 0 and room.ventilation.ach_mean > 0 and room.ventilation.ventilation_status != "Not calculated" and room.ventilation.ventilation_status != "No data available" and room.ventilation.ventilation_status != "Invalid data" %}
+                        <span class="ventilation-badge vent-{{ room.ventilation.ventilation_grade }}">
+                            Ventilation: {{ room.ventilation.ventilation_grade }}
+                        </span>
+                        {% endif %}
+                    </div>
+                    <div class="performance-score">
+                        Performance Score: {{ "%.1f"|format(room.performance_score) }}/100
+                    </div>
+                </div>
+                {% endif %}
             </div>
 
             <div class="room" id="room-{{ room.id }}">
                 <!-- Room Performance Metrics -->
                 <div class="metrics-grid">
                     <div class="metric-card">
-                        <div class="metric-value {{ room.co2_1000_class }}">{{ room.co2_1000_compliance }}%</div>
-                        <div class="metric-label">CO₂ &lt;1000ppm</div>
+                        <div class="metric-value {{ room.co2_1000_class }}">{{ "%.1f"|format(room.co2_1000_compliance) }}%</div>
+                        <div class="metric-label">CO₂ &lt;1000ppm (Besættelse)</div>
                     </div>
                     <div class="metric-card">
-                        <div class="metric-value {{ room.co2_2000_class }}">{{ room.co2_2000_compliance }}%</div>
-                        <div class="metric-label">CO₂ &lt;2000ppm</div>
+                        <div class="metric-value {{ room.co2_2000_class }}">{{ "%.1f"|format(room.co2_2000_compliance) }}%</div>
+                        <div class="metric-label">CO₂ &lt;2000ppm (Besættelse)</div>
                     </div>
                     <div class="metric-card">
                         <div class="metric-value {{ room.temp_performance.class }}">{{ room.temp_performance.value }}%</div>
-                        <div class="metric-label">Temperatur Overholdelse</div>
+                        <div class="metric-label">Temp. 20-26°C (Besættelse)</div>
                     </div>
+                    <div class="metric-card">
+                        <div class="metric-value {{ 'danger' if room.metrics.temp_above_27_occupancy > 5 else 'warning' if room.metrics.temp_above_27_occupancy > 1 else 'good' }}">
+                            {{ "%.1f"|format(room.metrics.temp_above_27_occupancy) }}%
+                        </div>
+                        <div class="metric-label">Temp. &gt;27°C (Besættelse)</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value {{ 'danger' if room.metrics.temp_above_26_occupancy > 10 else 'warning' if room.metrics.temp_above_26_occupancy > 5 else 'good' }}">
+                            {{ "%.1f"|format(room.metrics.temp_above_26_occupancy) }}%
+                        </div>
+                        <div class="metric-label">Temp. &gt;26°C (Besættelse)</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value {{ 'danger' if room.metrics.temp_below_20_occupancy > 15 else 'warning' if room.metrics.temp_below_20_occupancy > 5 else 'good' }}">
+                            {{ "%.1f"|format(room.metrics.temp_below_20_occupancy) }}%
+                        </div>
+                        <div class="metric-label">Temp. &lt;20°C (Besættelse)</div>
+                    </div>
+                    {% if room.ventilation and room.ventilation.periods_analyzed > 0 and room.ventilation.ach_mean > 0 and room.ventilation.ventilation_status != "Not calculated" and room.ventilation.ventilation_status != "No data available" and room.ventilation.ventilation_status != "Invalid data" %}
+                    <div class="metric-card">
+                        <div class="metric-value {{ 'good' if room.ventilation.ach_mean >= 2.0 else 'warning' if room.ventilation.ach_mean >= 1.0 else 'danger' }}">
+                            {{ "%.2f"|format(room.ventilation.ach_mean) }}
+                            <small>({{ room.ventilation.confidence }})</small>
+                            {% if room.ventilation.ventilation_grade %}
+                            <span class="ventilation-badge vent-{{ room.ventilation.ventilation_grade }}" style="margin-left: 5px; font-size: 0.8em;">{{ room.ventilation.ventilation_grade }}</span>
+                            {% endif %}
+                        </div>
+                        <div class="metric-label">ACH (Luftskifte/time)</div>
+                    </div>
+                    {% endif %}
                     <div class="metric-card">
                         <div class="metric-value {{ room.data_quality.class }}">{{ room.data_quality.value }}%</div>
                         <div class="metric-label">Datakvalitet</div>
-                    </div>
-                    <div class="metric-card">
-                        <div class="metric-value">{{ room.sensor_count }}</div>
-                        <div class="metric-label">Sensorer</div>
                     </div>
                 </div>
 
@@ -1291,20 +1418,213 @@
                         {% endfor %}
                     </tbody>
                 </table>
+                
+                <!-- Comprehensive Ventilation Analysis -->
+                {% if room.ventilation and room.ventilation.periods_analyzed > 0 and room.ventilation.ach_mean > 0 and room.ventilation.ventilation_status != "Not calculated" and room.ventilation.ventilation_status != "No data available" and room.ventilation.ventilation_status != "Invalid data" %}
+                <h4>Ventilationsanalyse</h4>
+                <div class="room-compliance-detail">
+                    <!-- Primary Ventilation Metrics -->
+                    <div class="metrics-grid">
+                        <div class="metric-card">
+                            <div class="metric-value {{ 'good' if room.ventilation.ach_mean >= 2.0 else 'warning' if room.ventilation.ach_mean >= 1.0 else 'danger' }}">
+                                {{ "%.2f"|format(room.ventilation.ach_mean) }}
+                            </div>
+                            <div class="metric-label">Gennemsnitlig ACH</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-value">{{ "%.2f"|format(room.ventilation.ach_std) }}</div>
+                            <div class="metric-label">Standardafvigelse</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-value {{ 'good' if room.ventilation.ventilation_grade in ['A', 'B'] else 'warning' if room.ventilation.ventilation_grade in ['C', 'D'] else 'danger' }}">
+                                {{ room.ventilation.ventilation_grade }}
+                            </div>
+                            <div class="metric-label">Ventilationskarakter</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-value {{ 'good' if room.ventilation.confidence_score >= 0.8 else 'warning' if room.ventilation.confidence_score >= 0.6 else 'danger' }}">
+                                {{ "%.1f"|format(room.ventilation.confidence_score * 100) }}%
+                            </div>
+                            <div class="metric-label">Pålidelighedscore</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Efficiency Metrics -->
+                    {% if room.ventilation.efficiency_metrics %}
+                    <div class="metrics-grid">
+                        <div class="metric-card">
+                            <div class="metric-value {{ 'good' if room.ventilation.air_renewal_efficiency >= 75 else 'warning' if room.ventilation.air_renewal_efficiency >= 50 else 'danger' }}">
+                                {{ "%.1f"|format(room.ventilation.air_renewal_efficiency) }}%
+                            </div>
+                            <div class="metric-label">Luftfornyelseseffektivitet</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-value {{ 'good' if room.ventilation.pollutant_removal_capacity >= 75 else 'warning' if room.ventilation.pollutant_removal_capacity >= 50 else 'danger' }}">
+                                {{ "%.1f"|format(room.ventilation.pollutant_removal_capacity) }}%
+                            </div>
+                            <div class="metric-label">Forureningsfjernelseskapacitet</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-value {{ 'good' if room.ventilation.occupancy_support_level >= 75 else 'warning' if room.ventilation.occupancy_support_level >= 50 else 'danger' }}">
+                                {{ "%.1f"|format(room.ventilation.occupancy_support_level) }}%
+                            </div>
+                            <div class="metric-label">Besættelsesunderstøttelse</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-value">{{ room.ventilation.consistency_rating }}</div>
+                            <div class="metric-label">Konsistensvurdering</div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    <!-- Status and Grade Description -->
+                    <div class="ventilation-status">
+                        <h5>Status: {{ room.ventilation.ventilation_status }}</h5>
+                        {% if room.ventilation.grade_description %}
+                        <p><strong>Karakter {{ room.ventilation.ventilation_grade }}:</strong> {{ room.ventilation.grade_description }}</p>
+                        {% endif %}
+                        
+                        <!-- Detailed Recommendations -->
+                        {% if room.ventilation.detailed_recommendation %}
+                        <div style="margin-top: 15px; padding: 15px; background-color: #f8f9fa; border-left: 4px solid #0066cc; border-radius: 0 4px 4px 0;">
+                            <h6 style="color: #0066cc; margin: 0 0 8px 0; font-size: 14px;">📋 Detaljerede anbefalinger:</h6>
+                            <div style="white-space: pre-wrap; line-height: 1.5; font-size: 13px;">{{ room.ventilation.detailed_recommendation }}</div>
+                        </div>
+                        {% else %}
+                        <p>{{ room.ventilation.recommendation }}</p>
+                        {% endif %}
+                        
+                        <!-- Analysis Details -->
+                        <div style="margin-top: 10px; font-size: 12px; color: #666;">
+                            <strong>Analyserede perioder:</strong> {{ room.ventilation.periods_analyzed }} | 
+                            <strong>Pålidelighedsniveau:</strong> {{ room.ventilation.confidence }}
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+                
+                <!-- Detailed Compliance Analysis by Periods -->
+                {% if room.basic_statistics and room.basic_statistics.compliance_analysis %}
+                <h4>Detaljeret Overholdelsesanalyse</h4>
+                <div class="room-compliance-detail">
+                    <!-- Period Analysis Summary -->
+                    <div class="period-summary">
+                        <h6>Analyserede Perioder:</h6>
+                        <ul class="period-list">
+                            {% for period_name, period_info in room.basic_statistics.compliance_analysis.period_analysis.items() %}
+                            <li><strong>{{ period_info.description }}:</strong> {{ period_info.total_hours }} timer</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    
+                    <!-- Temperature Compliance Tables -->
+                    <div class="compliance-tables">
+                        <h6>Temperatur Overholdelse:</h6>
+                        <table class="compliance-table">
+                            <thead>
+                                <tr>
+                                    <th>Periode</th>
+                                    <th>&lt;20°C</th>
+                                    <th>20-26°C (Komfort)</th>
+                                    <th>21-24°C (Optimal)</th>
+                                    <th>&gt;26°C</th>
+                                    <th>&gt;27°C</th>
+                                    <th>Gennemsnit</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for period_name, temp_data in room.basic_statistics.compliance_analysis.temperature_compliance.items() %}
+                                <tr>
+                                    <td>{{ room.basic_statistics.compliance_analysis.period_analysis[period_name].description.split(':')[0] }}</td>
+                                    <td class="{{ 'compliance-red' if temp_data.below_20_percentage > 10 else 'compliance-green' }}">
+                                        {{ "%.1f"|format(temp_data.below_20_percentage) }}%
+                                        <small>({{ temp_data.below_20_hours }}t)</small>
+                                    </td>
+                                    <td class="{{ 'compliance-green' if temp_data.comfort_zone_20_26_percentage > 80 else 'compliance-yellow' if temp_data.comfort_zone_20_26_percentage > 60 else 'compliance-red' }}">
+                                        {{ "%.1f"|format(temp_data.comfort_zone_20_26_percentage) }}%
+                                        <small>({{ temp_data.comfort_zone_20_26_hours }}t)</small>
+                                    </td>
+                                    <td class="{{ 'compliance-green' if temp_data.optimal_zone_21_24_percentage > 60 else 'compliance-yellow' if temp_data.optimal_zone_21_24_percentage > 40 else 'compliance-red' }}">
+                                        {{ "%.1f"|format(temp_data.optimal_zone_21_24_percentage) }}%
+                                        <small>({{ temp_data.optimal_zone_21_24_hours }}t)</small>
+                                    </td>
+                                    <td class="{{ 'compliance-red' if temp_data.above_26_percentage > 10 else 'compliance-yellow' if temp_data.above_26_percentage > 5 else 'compliance-green' }}">
+                                        {{ "%.1f"|format(temp_data.above_26_percentage) }}%
+                                        <small>({{ temp_data.above_26_hours }}t)</small>
+                                    </td>
+                                    <td class="{{ 'compliance-red' if temp_data.above_27_percentage > 5 else 'compliance-yellow' if temp_data.above_27_percentage > 1 else 'compliance-green' }}">
+                                        {{ "%.1f"|format(temp_data.above_27_percentage) }}%
+                                        <small>({{ temp_data.above_27_hours }}t)</small>
+                                    </td>
+                                    <td>{{ temp_data.mean_temperature }}°C</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                        
+                        <!-- CO2 Compliance Table -->
+                        <h6>CO₂ Overholdelse:</h6>
+                        <table class="compliance-table">
+                            <thead>
+                                <tr>
+                                    <th>Periode</th>
+                                    <th>&lt;1000ppm</th>
+                                    <th>&lt;2000ppm</th>
+                                    <th>&gt;2000ppm</th>
+                                    <th>Gennemsnit</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for period_name, co2_data in room.basic_statistics.compliance_analysis.co2_compliance.items() %}
+                                <tr>
+                                    <td>{{ room.basic_statistics.compliance_analysis.period_analysis[period_name].description.split(':')[0] }}</td>
+                                    <td class="{{ 'compliance-green' if co2_data.below_1000_percentage > 80 else 'compliance-yellow' if co2_data.below_1000_percentage > 60 else 'compliance-red' }}">
+                                        {{ "%.1f"|format(co2_data.below_1000_percentage) }}%
+                                        <small>({{ co2_data.below_1000_hours }}t)</small>
+                                    </td>
+                                    <td class="{{ 'compliance-green' if co2_data.below_2000_percentage > 95 else 'compliance-yellow' if co2_data.below_2000_percentage > 85 else 'compliance-red' }}">
+                                        {{ "%.1f"|format(co2_data.below_2000_percentage) }}%
+                                        <small>({{ co2_data.below_2000_hours }}t)</small>
+                                    </td>
+                                    <td class="{{ 'compliance-red' if co2_data.above_2000_percentage > 1 else 'compliance-green' }}">
+                                        {{ "%.1f"|format(co2_data.above_2000_percentage) }}%
+                                        <small>({{ co2_data.above_2000_hours }}t)</small>
+                                    </td>
+                                    <td>{{ co2_data.mean_co2 }}ppm</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- Key Findings and Recommendations -->
+                    {% if room.basic_statistics.compliance_analysis.summary.key_findings %}
+                    <div class="compliance-summary">
+                        <h6>Vigtige Observationer:</h6>
+                        <ul>
+                            {% for finding in room.basic_statistics.compliance_analysis.summary.key_findings %}
+                            <li>{{ finding }}</li>
+                            {% endfor %}
+                        </ul>
+                        
+                        <h6>Anbefalinger:</h6>
+                        <ul>
+                            {% for recommendation in room.basic_statistics.compliance_analysis.summary.recommendations %}
+                            <li>{{ recommendation }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endif %}
             </div>
         </div>
 
         <!-- Room Charts - Full Pages -->
         <div class="chart-full-page">
-            <div class="chart-title">Årlige Trends - {{ room.friendly_name or room.name }}</div>
-            <img src="{{ room.charts.yearly_trends }}" alt="Yearly Trends - {{ room.friendly_name or room.name }}">
-            <div class="chart-caption">Temperatur og CO₂ trends over hele året</div>
-        </div>
-
-        <div class="chart-full-page">
-            <div class="chart-title">Sæsonmønstre - {{ room.friendly_name or room.name }}</div>
-            <img src="{{ room.charts.seasonal_patterns }}" alt="Seasonal Patterns - {{ room.friendly_name or room.name }}">
-            <div class="chart-caption">Gennemsnitlige dagsmønstre for hver årstid</div>
+            <div class="chart-title">Tidsbaseret Analyse - {{ room.friendly_name or room.name }}</div>
+            <img src="{{ room.charts.time_series_analysis }}" alt="Time Series Analysis - {{ room.friendly_name or room.name }}">
+            <div class="chart-caption">Temperatur og CO₂ værdier over tid med markering af weekender og ferier</div>
         </div>
 
         <div class="chart-full-page">
