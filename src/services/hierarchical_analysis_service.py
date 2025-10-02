@@ -9,6 +9,7 @@ import logging
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 from datetime import datetime
+import warnings
 
 import pandas as pd
 import numpy as np
@@ -39,6 +40,8 @@ class HierarchicalAnalysisService:
         self.analytics_engine = None
         # Initialize filter processor with config
         self.filter_processor = UnifiedFilterProcessor(self.config)
+        # Cache for warnings to display at end
+        self.filter_warnings = []  # List of (room_name, room_id, filter_name, test_name, reason) tuples
     
     def _load_config(self) -> Dict[str, Any]:
         """Load analysis configuration."""
@@ -106,6 +109,9 @@ class HierarchicalAnalysisService:
         # Save all results
         results.save_all_to_directory(output_dir)
         logger.info(f"Analysis complete. Results saved to: {output_dir}")
+        
+        # Display grouped warnings at the end
+        self._display_filter_warnings_summary()
         
         return results
     
@@ -192,7 +198,7 @@ class HierarchicalAnalysisService:
                 ts = room.timeseries[parameter]
                 
                 # Run the test
-                result = self._evaluate_test(ts, test_name, test_config, building)
+                result = self._evaluate_test(ts, test_name, test_config, building, room)
                 if result:
                     test_results[test_name] = result
                     
@@ -207,7 +213,8 @@ class HierarchicalAnalysisService:
         ts: TimeSeriesData,
         test_name: str,
         test_config: Dict[str, Any],
-        building: Building
+        building: Building,
+        room: Optional[Room] = None
     ) -> Optional[TestResult]:
         """Evaluate a single test on timeseries data."""
         try:
@@ -232,7 +239,16 @@ class HierarchicalAnalysisService:
                 logger.debug(f"Applying filter '{filter_name}' for test '{test_name}'")
                 df = self.filter_processor.apply_filter(df, filter_name, period_name or '')
                 if df.empty:
-                    logger.warning(f"Filter '{filter_name}' resulted in empty dataframe for test '{test_name}'")
+                    # Cache warning instead of logging immediately
+                    room_name = room.name if room else "Unknown"
+                    room_id = room.id if room else "unknown"
+                    self.filter_warnings.append({
+                        'room_name': room_name,
+                        'room_id': room_id,
+                        'filter_name': filter_name,
+                        'test_name': test_name,
+                        'period': period_name or 'all_year'
+                    })
                     return None
             
             data_series = df[parameter].dropna()
@@ -432,8 +448,19 @@ class HierarchicalAnalysisService:
                 if param not in weather_df.columns:
                     continue
                 
+                # Get weather series
+                weather_series = weather_df[param].copy()
+                
+                # Handle timezone mismatch - make both timezone-naive for alignment
+                if hasattr(weather_series.index, 'tz') and weather_series.index.tz is not None:
+                    weather_series.index = weather_series.index.tz_localize(None)
+                
+                indoor_index = data_series.index
+                if hasattr(indoor_index, 'tz') and indoor_index.tz is not None:
+                    indoor_index = indoor_index.tz_localize(None)
+                
                 # Align weather data with indoor data
-                weather_aligned = weather_df[param].reindex(data_series.index, method='nearest', tolerance='1H')
+                weather_aligned = weather_series.reindex(indoor_index, method='nearest', tolerance=pd.Timedelta('1h'))
                 weather_aligned = weather_aligned.dropna()
                 
                 # Get common index between indoor and weather data
@@ -446,8 +473,10 @@ class HierarchicalAnalysisService:
                 non_compliance_binary = (~compliant.reindex(common_idx)).astype(int)
                 weather_common = weather_aligned.reindex(common_idx)
                 
-                # Calculate Pearson correlation
-                correlation = non_compliance_binary.corr(weather_common)
+                # Calculate Pearson correlation (suppress divide-by-zero warnings)
+                with warnings.catch_warnings():
+                    warnings.filterwarnings('ignore', category=RuntimeWarning, message='invalid value encountered in divide')
+                    correlation = non_compliance_binary.corr(weather_common)
                 
                 if not np.isnan(correlation):
                     # Normalize parameter name for consistency
@@ -590,9 +619,11 @@ class HierarchicalAnalysisService:
             {'room_id': r.room_id, 'room_name': r.room_name, 'compliance_rate': r.overall_compliance_rate}
             for r in sorted_rooms[:3]
         ]
+        # Get worst performing rooms in ascending order (worst first)
+        worst_rooms = list(reversed(sorted_rooms[-5:]))  # Get bottom 5 rooms, reverse to show worst first
         analysis.worst_performing_rooms = [
             {'room_id': r.room_id, 'room_name': r.room_name, 'compliance_rate': r.overall_compliance_rate}
-            for r in sorted_rooms[-3:]
+            for r in worst_rooms
         ]
         
         # Aggregate issues and recommendations
@@ -694,9 +725,11 @@ class HierarchicalAnalysisService:
             {'room_id': r.room_id, 'room_name': r.room_name, 'compliance_rate': r.overall_compliance_rate}
             for r in sorted_rooms[:5]
         ]
+        # Get worst performing rooms in ascending order (worst first)
+        worst_rooms = list(reversed(sorted_rooms[-5:]))  # Get bottom 5 rooms, reverse to show worst first
         analysis.worst_performing_rooms = [
             {'room_id': r.room_id, 'room_name': r.room_name, 'compliance_rate': r.overall_compliance_rate}
-            for r in sorted_rooms[-5:]
+            for r in worst_rooms
         ]
         
         # Aggregate issues and recommendations
@@ -845,6 +878,68 @@ class HierarchicalAnalysisService:
             priorities.append(priority)
         
         return priorities
+    
+    def _display_filter_warnings_summary(self):
+        """Display grouped summary of filter warnings at the end of analysis."""
+        if not self.filter_warnings:
+            return
+        
+        from collections import defaultdict
+        
+        # Group warnings by room
+        warnings_by_room = defaultdict(list)
+        for warning in self.filter_warnings:
+            warnings_by_room[warning['room_name']].append(warning)
+        
+        # Count total issues
+        total_warnings = len(self.filter_warnings)
+        affected_rooms = len(warnings_by_room)
+        
+        # Display summary
+        logger.warning("\n" + "="*80)
+        logger.warning(f"⚠️  FILTER WARNINGS SUMMARY: {total_warnings} missing data instances across {affected_rooms} rooms")
+        logger.warning("="*80)
+        
+        # Group by issue type
+        issue_summary = defaultdict(int)
+        for warning in self.filter_warnings:
+            key = f"{warning['filter_name']} / {warning['period']}"
+            issue_summary[key] += 1
+        
+        logger.warning("\n📊 Most Common Issues:")
+        for issue, count in sorted(issue_summary.items(), key=lambda x: x[1], reverse=True)[:5]:
+            logger.warning(f"   • {issue}: {count} occurrences")
+        
+        # Display details by room (top 10 most affected)
+        room_counts = {room: len(warnings) for room, warnings in warnings_by_room.items()}
+        top_affected = sorted(room_counts.items(), key=lambda x: x[1], reverse=True)[:10]
+        
+        logger.warning(f"\n🏢 Most Affected Rooms (showing top {min(10, len(top_affected))}):")
+        for room_name, count in top_affected:
+            warnings_list = warnings_by_room[room_name]
+            logger.warning(f"\n   📍 {room_name} ({count} missing datasets):")
+            
+            # Group by period for this room
+            periods = defaultdict(list)
+            for w in warnings_list:
+                periods[w['period']].append(w['test_name'])
+            
+            for period, tests in periods.items():
+                if len(tests) <= 3:
+                    test_names = ', '.join([t.split('_')[-2] if '_' in t else t for t in tests])
+                else:
+                    test_names = f"{len(tests)} tests"
+                logger.warning(f"      - {period}: {test_names}")
+        
+        # Provide diagnostic guidance
+        logger.warning("\n💡 Common Causes:")
+        logger.warning("   1. Seasonal gaps: Schools often have extended breaks (summer, autumn, holidays)")
+        logger.warning("   2. Sensor activation: Some sensors may not have been active in certain periods")
+        logger.warning("   3. Filter overlap: Combining period filters with holiday exclusions may remove all data")
+        logger.warning("   4. Room usage patterns: Some rooms (e.g., classrooms) are only used during school year")
+        
+        logger.warning("\n✓ These warnings are informational. Tests with sufficient data completed successfully.")
+        logger.warning("="*80 + "\n")
 
 
 def create_hierarchical_analysis_service(config_path: Optional[Path] = None) -> HierarchicalAnalysisService:

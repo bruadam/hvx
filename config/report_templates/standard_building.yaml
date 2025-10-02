@@ -1,0 +1,67 @@
+template_id: standard_building
+name: Standard Building Analysis
+description: Comprehensive building performance analysis report
+version: '1.0'
+author: null
+created_date: '2025-10-02T16:43:18.029619'
+output_format: pdf
+page_size: A4
+orientation: portrait
+default_level: building
+sections:
+- section_type: metadata
+  section_id: metadata
+  enabled: true
+  page_break_before: false
+  page_break_after: false
+  metadata:
+    include_title: true
+    title: null
+    include_author: true
+    author: null
+    include_date: true
+    include_description: true
+    description: null
+    include_notes: false
+    notes: null
+    custom_fields: {}
+- section_type: summary
+  section_id: executive_summary
+  enabled: true
+  page_break_before: false
+  page_break_after: false
+  summary:
+    level: building
+    include_metrics: true
+    include_test_summary: true
+    include_compliance_rates: true
+    include_quality_scores: true
+    include_best_performing: true
+    include_worst_performing: true
+    top_n: 5
+    custom_metrics: []
+- section_type: issues
+  section_id: critical_issues
+  enabled: true
+  page_break_before: false
+  page_break_after: false
+  issues:
+    level: building
+    include_critical: true
+    include_high: true
+    include_medium: false
+    include_low: false
+    max_issues: 10
+    group_by: null
+- section_type: recommendations
+  section_id: recommendations
+  enabled: true
+  page_break_before: false
+  page_break_after: false
+  recommendations:
+    level: building
+    max_recommendations: 10
+    priority_filter: null
+    group_by: null
+global_filters: {}
+global_config: {}

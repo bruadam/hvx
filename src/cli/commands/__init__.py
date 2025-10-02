@@ -8,5 +8,6 @@ from . import data
 from . import analyze
 from . import workflow
 from . import tests
+from . import report_templates
 
-__all__ = ['graphs', 'templates', 'analytics', 'reports', 'data', 'analyze', 'workflow', 'tests']
+__all__ = ['graphs', 'templates', 'analytics', 'reports', 'data', 'analyze', 'workflow', 'tests', 'report_templates']

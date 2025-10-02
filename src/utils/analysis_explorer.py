@@ -636,15 +636,8 @@ Browse hierarchical analysis results: portfolio → buildings → levels → roo
         
         console.print(table)
         
-        # Show recommendations from tests
-        all_recommendations = []
-        for result in self.current_room.test_results.values():
-            all_recommendations.extend(result.recommendations)
-        
-        if all_recommendations:
-            console.print("\n[bold yellow]Test-specific Recommendations:[/bold yellow]")
-            for rec in all_recommendations[:5]:
-                console.print(f"   • {rec}")
+        # Show recommendations from tests - grouped by recommendation text
+        self._show_grouped_recommendations()
         
         # Show weather correlation summary if available
         if hasattr(self.current_room, 'weather_correlation_summary') and self.current_room.weather_correlation_summary:
@@ -683,6 +676,52 @@ Browse hierarchical analysis results: portfolio → buildings → levels → roo
             else:
                 console.print("[red]Invalid test number[/red]")
                 Prompt.ask("[bold]Press Enter to continue[/bold]", default="")
+    
+    def _show_grouped_recommendations(self):
+        """Display recommendations grouped by text, showing which tests/periods generated each."""
+        if not self.current_room or not self.current_room.test_results:
+            return
+        
+        from collections import defaultdict
+        
+        # Collect recommendations with their source context
+        # rec_text -> list of (test_name, period, parameter)
+        rec_sources = defaultdict(list)
+        
+        for test_name, result in self.current_room.test_results.items():
+            period_info = result.period if result.period else "all_year"
+            for rec in result.recommendations:
+                rec_sources[rec].append((test_name, period_info, result.parameter))
+        
+        if not rec_sources:
+            return
+        
+        console.print("\n[bold yellow]Recommendations by Issue:[/bold yellow]")
+        
+        # Group by parameter for better organization
+        by_param = defaultdict(list)
+        for rec_text, sources in rec_sources.items():
+            param = sources[0][2]  # Get parameter from first source
+            by_param[param].append((rec_text, sources))
+        
+        # Display by parameter in order: co2, temperature, humidity
+        for param in ['co2', 'temperature', 'humidity']:
+            if param not in by_param:
+                continue
+            
+            console.print(f"\n  [cyan]{param.upper()}:[/cyan]")
+            for rec_text, sources in by_param[param]:
+                # Extract unique periods from sources
+                periods = sorted(set(src[1] for src in sources))
+                
+                # Format period string (show up to 3, then "+N more")
+                if len(periods) <= 3:
+                    period_str = ', '.join(periods)
+                else:
+                    period_str = ', '.join(periods[:3]) + f" (+{len(periods)-3} more)"
+                
+                console.print(f"   • {rec_text}")
+                console.print(f"     [dim](Periods: {period_str})[/dim]")
     
     def _plot_test_timeseries(self, test_name: str, test_result: TestResult):
         """Plot timeseries for a specific test with non-compliant periods highlighted."""

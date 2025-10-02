@@ -55,7 +55,7 @@ def cli():
 
 
 # Import and register command groups
-from src.cli.commands import graphs, templates, analytics, reports, data, analyze, workflow, tests
+from src.cli.commands import graphs, templates, analytics, reports, data, analyze, workflow, tests, report_templates
 
 cli.add_command(graphs.graphs)
 cli.add_command(templates.templates)
@@ -65,6 +65,7 @@ cli.add_command(data.data)
 cli.add_command(analyze.analyze_cli)
 cli.add_command(workflow.workflow)
 cli.add_command(tests.tests)
+cli.add_command(report_templates.report_templates)
 
 
 if __name__ == '__main__':
