@@ -646,6 +646,28 @@ Browse hierarchical analysis results: portfolio → buildings → levels → roo
             for rec in all_recommendations[:5]:
                 console.print(f"   • {rec}")
         
+        # Show weather correlation summary if available
+        if hasattr(self.current_room, 'weather_correlation_summary') and self.current_room.weather_correlation_summary:
+            summary = self.current_room.weather_correlation_summary
+            if summary.get('has_correlations'):
+                console.print("\n[bold cyan]Weather Correlation Summary:[/bold cyan]")
+                
+                # Show average correlations
+                if summary.get('avg_correlations'):
+                    console.print("  [dim]Average correlations with non-compliance:[/dim]")
+                    for param, corr in summary['avg_correlations'].items():
+                        corr_strength = self._interpret_correlation(corr)
+                        corr_color = "red" if abs(corr) > 0.5 else "yellow" if abs(corr) > 0.3 else "green"
+                        console.print(f"    • {param}: [{corr_color}]{corr:+.3f}[/{corr_color}] ({corr_strength})")
+                
+                # Show strongest correlations
+                if summary.get('strongest_correlations') and len(summary['strongest_correlations']) > 0:
+                    console.print("\n  [dim]Strongest correlations by test:[/dim]")
+                    for item in summary['strongest_correlations'][:3]:
+                        corr = item['correlation']
+                        corr_color = "red" if abs(corr) > 0.5 else "yellow" if abs(corr) > 0.3 else "green"
+                        console.print(f"    • {item['test']} vs {item['weather_parameter']}: [{corr_color}]{corr:+.3f}[/{corr_color}]")
+        
         # Prompt to plot timeseries
         console.print("\n[bold]Actions:[/bold]")
         console.print("  • Enter a test number to plot its timeseries")
@@ -1365,6 +1387,22 @@ Browse hierarchical analysis results: portfolio → buildings → levels → roo
             mask |= daily_mask
         
         return mask
+    
+    def _interpret_correlation(self, corr: float) -> str:
+        """Interpret correlation coefficient strength and direction."""
+        abs_corr = abs(corr)
+        direction = "positive" if corr > 0 else "negative"
+        
+        if abs_corr >= 0.7:
+            strength = "strong"
+        elif abs_corr >= 0.5:
+            strength = "moderate"
+        elif abs_corr >= 0.3:
+            strength = "weak"
+        else:
+            strength = "very weak"
+        
+        return f"{strength} {direction}"
     
     def _determine_compliance_mask(self, ts_data: pd.Series, test_name: str, test_result: TestResult) -> Optional[pd.Series]:
         """

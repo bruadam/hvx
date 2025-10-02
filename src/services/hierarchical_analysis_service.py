@@ -153,7 +153,7 @@ class HierarchicalAnalysisService:
             analysis.data_completeness = sum(completeness_scores) / len(completeness_scores)
         
         # Run tests on each parameter
-        test_results = self._run_room_tests(room)
+        test_results = self._run_room_tests(room, building)
         for test_name, result in test_results.items():
             analysis.add_test_result(test_name, result)
         
@@ -164,6 +164,9 @@ class HierarchicalAnalysisService:
         # Calculate overall metrics
         analysis.calculate_overall_metrics()
         
+        # Calculate weather correlation summary
+        analysis.weather_correlation_summary = self._calculate_weather_correlation_summary(test_results)
+        
         # Generate recommendations
         analysis.recommendations = self._generate_room_recommendations(analysis)
         
@@ -172,7 +175,7 @@ class HierarchicalAnalysisService:
         
         return analysis
     
-    def _run_room_tests(self, room: Room) -> Dict[str, TestResult]:
+    def _run_room_tests(self, room: Room, building: Building) -> Dict[str, TestResult]:
         """Run configured tests on room data."""
         test_results = {}
         
@@ -189,7 +192,7 @@ class HierarchicalAnalysisService:
                 ts = room.timeseries[parameter]
                 
                 # Run the test
-                result = self._evaluate_test(ts, test_name, test_config)
+                result = self._evaluate_test(ts, test_name, test_config, building)
                 if result:
                     test_results[test_name] = result
                     
@@ -203,7 +206,8 @@ class HierarchicalAnalysisService:
         self,
         ts: TimeSeriesData,
         test_name: str,
-        test_config: Dict[str, Any]
+        test_config: Dict[str, Any],
+        building: Building
     ) -> Optional[TestResult]:
         """Evaluate a single test on timeseries data."""
         try:
@@ -281,6 +285,17 @@ class HierarchicalAnalysisService:
                 parameter, threshold, threshold_type, compliance_rate, statistics
             )
             
+            # Calculate weather correlations if building has climate data
+            weather_correlations = {}
+            non_compliance_weather_stats = {}
+            if building.climate_data and non_compliant_hours > 0:
+                try:
+                    weather_correlations, non_compliance_weather_stats = self._calculate_weather_correlations(
+                        data_series, compliant, building.climate_data
+                    )
+                except Exception as e:
+                    logger.warning(f"Could not calculate weather correlations for {test_name}: {e}")
+            
             return TestResult(
                 test_name=test_name,
                 description=description,
@@ -295,7 +310,9 @@ class HierarchicalAnalysisService:
                 severity=severity,
                 recommendations=recommendations,
                 period=test_config.get('period'),
-                filter_applied=test_config.get('filter')
+                filter_applied=test_config.get('filter'),
+                weather_correlations=weather_correlations,
+                non_compliance_weather_stats=non_compliance_weather_stats
             )
             
         except Exception as e:
@@ -371,6 +388,143 @@ class HierarchicalAnalysisService:
                     )
         
         return issues
+    
+    def _calculate_weather_correlations(
+        self,
+        data_series: pd.Series,
+        compliant: pd.Series,
+        climate_data
+    ) -> tuple[Dict[str, float], Dict[str, Dict[str, float]]]:
+        """
+        Calculate correlation between non-compliance and weather factors.
+        
+        Args:
+            data_series: Indoor parameter timeseries
+            compliant: Boolean series indicating compliance
+            climate_data: ClimateData object with outdoor weather data
+        
+        Returns:
+            Tuple of (correlations dict, weather stats dict)
+        """
+        from src.models.building_data import ClimateData
+        
+        correlations = {}
+        weather_stats = {}
+        
+        # Get non-compliant periods
+        non_compliant_mask = ~compliant
+        non_compliant_index = data_series[non_compliant_mask].index
+        
+        if len(non_compliant_index) == 0:
+            return correlations, weather_stats
+        
+        # Weather parameters to analyze
+        weather_params = ['outdoor_temp', 'temperature', 'radiation', 'sunshine']
+        
+        for param in weather_params:
+            try:
+                # Get weather timeseries
+                weather_ts = climate_data.get_parameter(param)
+                if not weather_ts:
+                    continue
+                
+                weather_df = weather_ts.data
+                if param not in weather_df.columns:
+                    continue
+                
+                # Align weather data with indoor data
+                weather_aligned = weather_df[param].reindex(data_series.index, method='nearest', tolerance='1H')
+                weather_aligned = weather_aligned.dropna()
+                
+                # Get common index between indoor and weather data
+                common_idx = data_series.index.intersection(weather_aligned.index)
+                if len(common_idx) < 10:  # Need minimum data points for correlation
+                    continue
+                
+                # Calculate correlation between non-compliance and weather
+                # Create binary non-compliance series for correlation
+                non_compliance_binary = (~compliant.reindex(common_idx)).astype(int)
+                weather_common = weather_aligned.reindex(common_idx)
+                
+                # Calculate Pearson correlation
+                correlation = non_compliance_binary.corr(weather_common)
+                
+                if not np.isnan(correlation):
+                    # Normalize parameter name for consistency
+                    param_name = 'outdoor_temp' if param == 'temperature' else param
+                    correlations[param_name] = float(correlation)
+                    
+                    # Calculate weather statistics during non-compliant periods
+                    non_compliant_common_idx = common_idx.intersection(non_compliant_index)
+                    if len(non_compliant_common_idx) > 0:
+                        weather_during_nc = weather_common.reindex(non_compliant_common_idx).dropna()
+                        if len(weather_during_nc) > 0:
+                            weather_stats[param_name] = {
+                                'mean': float(weather_during_nc.mean()),
+                                'min': float(weather_during_nc.min()),
+                                'max': float(weather_during_nc.max()),
+                                'std': float(weather_during_nc.std())
+                            }
+                
+            except Exception as e:
+                logger.debug(f"Error calculating correlation for {param}: {e}")
+                continue
+        
+        return correlations, weather_stats
+    
+    def _calculate_weather_correlation_summary(
+        self,
+        test_results: Dict[str, TestResult]
+    ) -> Dict[str, Any]:
+        """
+        Calculate summary of weather correlations across all tests.
+        
+        Args:
+            test_results: Dictionary of test results
+        
+        Returns:
+            Summary dictionary with averaged correlations
+        """
+        summary = {
+            'has_correlations': False,
+            'avg_correlations': {},
+            'strongest_correlations': []
+        }
+        
+        # Collect all correlations
+        all_correlations = {}
+        for test_name, result in test_results.items():
+            if result.weather_correlations:
+                summary['has_correlations'] = True
+                for param, corr in result.weather_correlations.items():
+                    if param not in all_correlations:
+                        all_correlations[param] = []
+                    all_correlations[param].append({
+                        'test': test_name,
+                        'correlation': corr
+                    })
+        
+        # Calculate averages
+        for param, corr_list in all_correlations.items():
+            avg_corr = sum(c['correlation'] for c in corr_list) / len(corr_list)
+            summary['avg_correlations'][param] = float(avg_corr)
+            
+            # Track strongest correlations (absolute value)
+            for item in corr_list:
+                summary['strongest_correlations'].append({
+                    'test': item['test'],
+                    'weather_parameter': param,
+                    'correlation': item['correlation']
+                })
+        
+        # Sort by absolute correlation strength
+        summary['strongest_correlations'].sort(
+            key=lambda x: abs(x['correlation']),
+            reverse=True
+        )
+        summary['strongest_correlations'] = summary['strongest_correlations'][:5]  # Top 5
+        
+        return summary
     
     def _analyze_all_levels(
         self,
