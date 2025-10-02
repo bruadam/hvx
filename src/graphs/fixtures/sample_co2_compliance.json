@@ -1,0 +1,16 @@
+{
+  "chart_type": "bar",
+  "title": "CO2 Compliance by Period",
+  "data": {
+    "periods": ["Spring", "Summer", "Autumn", "Winter", "All Year"],
+    "compliance_percentage": [92.5, 88.3, 95.1, 91.7, 89.8],
+    "threshold": 1000,
+    "total_hours": [2160, 2208, 2160, 2136, 8664]
+  },
+  "styling": {
+    "colors": ["#4CAF50", "#8BC34A", "#66BB6A", "#81C784", "#A5D6A7"],
+    "xlabel": "Period",
+    "ylabel": "Compliance (%)",
+    "threshold_line": 85
+  }
+}

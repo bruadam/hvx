@@ -1,0 +1,21 @@
+{
+  "building_name": "Building A",
+  "periods": {
+    "all_year": {
+      "co2_compliance": 82.5,
+      "temperature_compliance": 88.3,
+      "total_hours": 8760
+    },
+    "opening_hours": {
+      "co2_compliance": 78.2,
+      "temperature_compliance": 85.7,
+      "total_hours": 2080
+    },
+    "non_opening_hours": {
+      "co2_compliance": 95.8,
+      "temperature_compliance": 92.1,
+      "total_hours": 6680
+    }
+  },
+  "metrics": ["co2_compliance", "temperature_compliance"]
+}

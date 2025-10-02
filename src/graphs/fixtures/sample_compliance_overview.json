@@ -1,0 +1,18 @@
+{
+  "standards": {
+    "co2_1000_all_year_opening": {
+      "name": "CO2 < 1000 ppm (Opening Hours)",
+      "compliance_rate": 78.5,
+      "target": 90.0,
+      "status": "warning"
+    },
+    "temp_comfort_all_year_opening": {
+      "name": "Temperature Comfort (Opening Hours)",
+      "compliance_rate": 85.3,
+      "target": 90.0,
+      "status": "good"
+    }
+  },
+  "overall_compliance": 81.9,
+  "chart_type": "gauge"
+}

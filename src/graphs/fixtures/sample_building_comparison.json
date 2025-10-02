@@ -1,0 +1,13 @@
+{
+  "title": "Building Performance Comparison",
+  "data": {
+    "categories": ["Building A", "Building B", "Building C", "Building D"],
+    "values": [85.3, 78.9, 91.2, 72.5]
+  },
+  "styling": {
+    "xlabel": "Building",
+    "ylabel": "Compliance Rate (%)",
+    "colors": ["#4CAF50", "#FFC107", "#4CAF50", "#F44336"],
+    "threshold_line": 80
+  }
+}

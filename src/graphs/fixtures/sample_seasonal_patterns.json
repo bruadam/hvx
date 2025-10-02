@@ -1,0 +1,78 @@
+{
+  "room_name": "Room 301",
+  "seasons": {
+    "spring": {
+      "temperature": {
+        "min": 18.5,
+        "q1": 20.2,
+        "median": 22.0,
+        "q3": 23.8,
+        "max": 26.5,
+        "outliers": [27.2, 28.1]
+      },
+      "co2": {
+        "min": 420,
+        "q1": 650,
+        "median": 880,
+        "q3": 1150,
+        "max": 1580,
+        "outliers": [1820, 2100]
+      }
+    },
+    "summer": {
+      "temperature": {
+        "min": 21.5,
+        "q1": 23.8,
+        "median": 25.5,
+        "q3": 27.2,
+        "max": 29.8,
+        "outliers": [30.5, 31.2]
+      },
+      "co2": {
+        "min": 380,
+        "q1": 590,
+        "median": 820,
+        "q3": 1080,
+        "max": 1450,
+        "outliers": [1650]
+      }
+    },
+    "autumn": {
+      "temperature": {
+        "min": 19.2,
+        "q1": 21.5,
+        "median": 23.2,
+        "q3": 24.8,
+        "max": 27.1,
+        "outliers": []
+      },
+      "co2": {
+        "min": 440,
+        "q1": 680,
+        "median": 920,
+        "q3": 1200,
+        "max": 1620,
+        "outliers": [1850, 1980]
+      }
+    },
+    "winter": {
+      "temperature": {
+        "min": 18.0,
+        "q1": 20.5,
+        "median": 22.5,
+        "q3": 24.2,
+        "max": 26.8,
+        "outliers": [27.5]
+      },
+      "co2": {
+        "min": 480,
+        "q1": 720,
+        "median": 980,
+        "q3": 1280,
+        "max": 1720,
+        "outliers": [1920, 2050, 2180]
+      }
+    }
+  },
+  "metrics": ["temperature", "co2"]
+}

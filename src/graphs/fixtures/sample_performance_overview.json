@@ -1,0 +1,16 @@
+{
+  "metrics": {
+    "co2_compliance": 78.5,
+    "temperature_compliance": 85.2,
+    "comfort_score": 82.0
+  },
+  "thresholds": {
+    "co2": 1000,
+    "temperature_min": 20,
+    "temperature_max": 26
+  },
+  "buildings": [
+    {"name": "Building A", "co2_compliance": 82, "temperature_compliance": 88, "comfort_score": 85},
+    {"name": "Building B", "co2_compliance": 75, "temperature_compliance": 82, "comfort_score": 79}
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "data": [
+    {
+      "building": "Building A",
+      "data_completeness": "99.1%",
+      "missing_periods": 3,
+      "quality_score": 95
+    },
+    {
+      "building": "Building B",
+      "data_completeness": "95.5%",
+      "missing_periods": 18,
+      "quality_score": 87
+    },
+    {
+      "building": "Building C",
+      "data_completeness": "100%",
+      "missing_periods": 0,
+      "quality_score": 100
+    },
+    {
+      "building": "Building D",
+      "data_completeness": "90.1%",
+      "missing_periods": 42,
+      "quality_score": 78
+    }
+  ],
+  "columns": ["building", "data_completeness", "missing_periods", "quality_score"]
+}

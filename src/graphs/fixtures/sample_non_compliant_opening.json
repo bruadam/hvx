@@ -1,0 +1,41 @@
+{
+  "room_name": "Room 301",
+  "filter": "opening_hours",
+  "violations": [
+    {
+      "timestamp": "2024-09-02T10:30:00",
+      "co2": 1150,
+      "temperature": 22.5,
+      "violation_type": "co2"
+    },
+    {
+      "timestamp": "2024-09-02T11:15:00",
+      "co2": 1280,
+      "temperature": 23.8,
+      "violation_type": "co2"
+    },
+    {
+      "timestamp": "2024-09-03T14:45:00",
+      "co2": 890,
+      "temperature": 27.2,
+      "violation_type": "temperature"
+    },
+    {
+      "timestamp": "2024-09-05T09:20:00",
+      "co2": 1050,
+      "temperature": 22.1,
+      "violation_type": "co2"
+    },
+    {
+      "timestamp": "2024-09-05T13:30:00",
+      "co2": 1320,
+      "temperature": 26.8,
+      "violation_type": "both"
+    }
+  ],
+  "thresholds": {
+    "co2": 1000,
+    "temperature": [20, 26]
+  },
+  "metrics": ["co2", "temperature"]
+}
