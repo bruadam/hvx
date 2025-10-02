@@ -20,3 +20,7 @@ jinja2
 mistralai
 python-dotenv
 plotly
+flask
+flask-cors
+requests
+streamlit

@@ -35,10 +35,15 @@ def data():
               help='Automatically infer building levels from room names')
 @click.option('--infer-room-types/--no-infer-room-types', default=True,
               help='Automatically infer room types from names')
+@click.option('--explore', '-e', is_flag=True,
+              help='Launch interactive data explorer after loading')
+@click.option('--interactive', '-i', is_flag=True,
+              help='Launch full interactive workflow (explore → analyze → report)')
 @click.option('--verbose', '-v', is_flag=True,
               help='Show detailed loading information')
 def load_data(source_dir: Path, output: Optional[Path], format: str, 
-              validate: bool, infer_levels: bool, infer_room_types: bool, verbose: bool):
+              validate: bool, infer_levels: bool, infer_room_types: bool, 
+              explore: bool, interactive: bool, verbose: bool):
     """
     Load building data from a directory structure.
     
@@ -66,6 +71,12 @@ def load_data(source_dir: Path, output: Optional[Path], format: str,
         
         # Load and save full data to pickle
         hvx data load data/samples/sample-extensive-data -o output/dataset.pkl -f pickle
+        
+        # Load and launch interactive explorer
+        hvx data load data/samples/sample-extensive-data --explore
+        
+        # Load and launch full interactive workflow
+        hvx data load data/samples/sample-extensive-data --interactive
         
         # Load without validation
         hvx data load data/samples/sample-extensive-data --no-validate
@@ -103,6 +114,56 @@ def load_data(source_dir: Path, output: Optional[Path], format: str,
             _save_dataset(dataset, output, format)
         
         console.print(f"\n[bold green]✓[/bold green] Data loading completed successfully!\n")
+        
+        # Launch interactive workflow if requested (takes precedence over explore)
+        if interactive:
+            from src.utils.interactive_workflow import launch_interactive_workflow
+            console.print("[bold cyan]Launching interactive workflow...[/bold cyan]\n")
+            output_file = output if output else None
+            launch_interactive_workflow(dataset=dataset, dataset_file=output_file)
+        # Or launch explorer only if requested
+        elif explore:
+            from src.utils.data_explorer import launch_explorer
+            console.print("[bold cyan]Launching interactive data explorer...[/bold cyan]\n")
+            launch_explorer(dataset)
+        
+    except Exception as e:
+        console.print(f"\n[bold red]✗ Error:[/bold red] {str(e)}\n")
+        raise click.Abort()
+
+
+@data.command(name='explore')
+@click.argument('data_file', type=click.Path(exists=True, dir_okay=False, path_type=Path))
+def explore_data(data_file: Path):
+    """
+    Launch interactive data explorer for a loaded dataset.
+    
+    The explorer provides an interactive interface to navigate through
+    buildings, levels, rooms, and visualize timeseries data.
+    
+    Examples:
+    
+    \b
+        # Explore a previously loaded dataset
+        hvx data explore output/dataset.pkl
+    """
+    
+    try:
+        from src.models.building_data import BuildingDataset
+        from src.utils.data_explorer import launch_explorer
+        
+        console.print(f"\n[bold blue]Loading dataset:[/bold blue] {data_file}\n")
+        
+        # Load dataset
+        dataset = BuildingDataset.load_from_pickle(data_file)
+        
+        console.print(f"[bold green]✓[/bold green] Dataset loaded successfully!")
+        console.print(f"  Buildings: {dataset.get_building_count()}")
+        console.print(f"  Total rooms: {dataset.get_total_room_count()}")
+        console.print()
+        
+        # Launch explorer
+        launch_explorer(dataset)
         
     except Exception as e:
         console.print(f"\n[bold red]✗ Error:[/bold red] {str(e)}\n")

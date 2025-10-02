@@ -69,6 +69,9 @@ class UnifiedFilterProcessor:
         self.default_opening_hours = [8, 9, 10, 11, 12, 13, 14, 15]
         self._load_default_periods()
         self._load_default_filters()
+        
+        # Log loaded filters for debugging
+        logger.info(f"UnifiedFilterProcessor initialized with {len(self.filters)} filters: {list(self.filters.keys())}")
     
     def _load_default_periods(self):
         """Load default period definitions."""
@@ -82,36 +85,45 @@ class UnifiedFilterProcessor:
             }
     
     def _load_default_filters(self):
-        """Load default filter definitions."""
-        if not self.filters:
-            self.filters = {
-                'opening_hours': {
-                    'hours': self.default_opening_hours,
-                    'weekdays_only': True,
-                    'exclude_holidays': True
-                },
-                'school_opening_hours': {
-                    'hours': self.default_opening_hours,
-                    'weekdays_only': True,
-                    'exclude_holidays': True
-                },
-                'all_hours': {
-                    'hours': list(range(24)),
-                    'weekdays_only': False,
-                    'exclude_holidays': False
-                },
-                'weekends_only': {
-                    'hours': list(range(24)),
-                    'weekdays_only': False,
-                    'weekends_only': True,
-                    'exclude_holidays': False
-                },
-                'outside_hours': {
-                    'exclude_opening_hours': True,
-                    'include_weekends': True,
-                    'include_holidays': True
-                }
+        """Load default filter definitions and merge with config filters."""
+        default_filters = {
+            'opening_hours': {
+                'hours': self.default_opening_hours,
+                'weekdays_only': True,
+                'exclude_holidays': True
+            },
+            'school_opening_hours': {
+                'hours': self.default_opening_hours,
+                'weekdays_only': True,
+                'exclude_holidays': True
+            },
+            'all_hours': {
+                'hours': list(range(24)),
+                'weekdays_only': False,
+                'exclude_holidays': False
+            },
+            'weekends_only': {
+                'hours': list(range(24)),
+                'weekdays_only': False,
+                'weekends_only': True,
+                'exclude_holidays': False
+            },
+            'outside_hours': {
+                'exclude_opening_hours': True,
+                'include_weekends': True,
+                'include_holidays': True
             }
+        }
+        
+        # Merge defaults with config filters (config takes precedence)
+        if self.filters:
+            # Config has filters, merge defaults for any missing ones
+            for key, value in default_filters.items():
+                if key not in self.filters:
+                    self.filters[key] = value
+        else:
+            # No config filters, use all defaults
+            self.filters = default_filters
     
     def apply_filter(
         self, 
@@ -158,7 +170,11 @@ class UnifiedFilterProcessor:
     
     def _apply_time_filter(self, df: pd.DataFrame, filter_name: str) -> pd.DataFrame:
         """Apply time-based filtering."""
-        if filter_name == 'all_hours' or filter_name not in self.filters:
+        if filter_name == 'all_hours':
+            return df
+        
+        if filter_name not in self.filters:
+            logger.warning(f"Filter '{filter_name}' not found in configuration. Available filters: {list(self.filters.keys())}")
             return df
         
         filter_config = self.filters[filter_name]
@@ -829,6 +845,8 @@ class UnifiedAnalyticsEngine:
                 continue
                 
             try:
+                if not self.rule_engine:
+                    continue
                 # Re-evaluate rule to get boolean compliance series
                 result = self.rule_engine.evaluate_rule(df, rule_name)
                 
@@ -860,6 +878,9 @@ class UnifiedAnalyticsEngine:
         if not data_column or data_column not in df.columns:
             return pd.DataFrame()
         
+        if not self.filter_processor:
+            return pd.DataFrame()
+        
         # Apply the same filters as the rule
         filter_name = analysis_result.metadata.get('filter_applied', 'all_hours')
         period_name = analysis_result.metadata.get('period_applied', 'all_year')
@@ -881,6 +902,8 @@ class UnifiedAnalyticsEngine:
             return pd.DataFrame()
         
         # Evaluate compliance based on rule type
+        if not self.rule_engine:
+            return pd.DataFrame()
         rule_type = self.rule_engine._determine_rule_type(rule_config)
         
         if rule_type == RuleType.BIDIRECTIONAL:
@@ -898,7 +921,7 @@ class UnifiedAnalyticsEngine:
             'parameter': data_column,
             'value': clean_data.values,
             'compliant': compliance_series.values,
-            'non_compliant': ~compliance_series.values,
+            'non_compliant': np.logical_not(np.asarray(compliance_series.values)),
             'rule_name': rule_name,
             'rule_description': rule_config.get('description', ''),
             'filter_applied': filter_name,

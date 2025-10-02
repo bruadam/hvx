@@ -436,7 +436,7 @@ class DataLoaderService:
                 issues.append(f"Room {room.name} has low data quality ({quality_score:.1f}%)")
             
             # Check for required parameters
-            required_params = ['temperature', 'co2']
+            required_params = ['temperature', 'co2', 'humidity']
             for param in required_params:
                 if param not in room.timeseries:
                     issues.append(f"Room {room.name} missing {param} data")

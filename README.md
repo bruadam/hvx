@@ -1,184 +1,312 @@
-# HVX CLI
+# HVX CLI - Indoor Environmental Quality & Energy Analytics
 
-A command-line tool for analyzing Indoor Environmental Quality (IEQ) and energy efficiency data in buildings.
+A comprehensive command-line tool for analyzing Indoor Environmental Quality (IEQ) and energy efficiency data in buildings. HVX provides portfolio-wide hierarchical analysis, visualization, and reporting capabilities.
 
 ## Features
 
-- **Graph Library**: Visualize data with various chart types
-- **Template Management**: Create custom report templates
-- **Analytics Engine**: Run IEQ analysis on sensor data
-- **PDF Reports**: Generate professional reports with charts
-- **JSON-First**: All analysis results saved as JSON for reusability
+- 📊 **Hierarchical Analysis** - Portfolio, building, level, and room-level insights
+- 📈 **Rich Visualizations** - Extensible chart library with multiple chart types
+- 📄 **PDF Reports** - Professional reports with customizable templates
+- 🏢 **Multi-Building Support** - Analyze entire building portfolios
+- 🔍 **Data Quality Metrics** - Comprehensive data validation and quality scoring
+- 🎯 **Investment Priorities** - Identify buildings needing attention
+- 🔌 **Extensible** - JSON-first architecture for easy integration
+
+## Quick Start
+
+```bash
+# Clone repository
+git clone https://github.com/bruadam/hvx.git
+cd hvx
+
+# Install
+pip install -e .
+
+# Load building data
+hvx data load data/samples/sample-extensive-data -o output/dataset.pkl -f pickle
+
+# Run hierarchical analysis
+hvx analyze run output/dataset.pkl --portfolio-name "My Portfolio"
+
+# View results
+hvx analyze summary output/analysis
+```
 
 ## Installation
 
+### From Source
+
 ```bash
+# Clone repository
+git clone https://github.com/bruadam/hvx.git
+cd hvx
+
 # Install in development mode
-python3 -m pip install -e .
+pip install -e .
 
 # Verify installation
 hvx --version
 ```
 
-## Quick Start
+### Requirements
 
-```bash
-# 1. Explore available charts
-hvx graphs list
-hvx graphs preview co2_compliance_bar
-
-# 2. Run analysis on your data
-hvx analytics run data/samples/building_sample.csv --name my_building
-
-# 3. Generate a report
-hvx reports generate simple_report --data my_building
-
-# Your report is ready in output/reports/
-```
+- Python 3.9+
+- See [setup.py](setup.py) for full dependencies
 
 ## Documentation
 
+### 📚 Complete CLI Documentation
+
+- **[CLI Overview](docs/cli/README.md)** - Complete command reference and workflows
+- **[Data Commands](docs/cli/data.md)** - Load and inspect building data
+- **[Analyze Commands](docs/cli/analyze.md)** - Hierarchical portfolio analysis
+- **[Analytics Commands](docs/cli/analytics.md)** - Legacy single-building analysis
+- **[Graphs Commands](docs/cli/graphs.md)** - Chart library and previews
+- **[Templates Commands](docs/cli/templates.md)** - Report template management
+- **[Reports Commands](docs/cli/reports.md)** - PDF report generation
+
+### 📖 Additional Resources
+
 - **[Quick Start Guide](docs/QUICKSTART.md)** - Get started in 5 minutes
-- **[Complete Implementation](docs/HVX_CLI_IMPLEMENTATION_COMPLETE.md)** - Full technical documentation
+- **[Data Loader Guide](docs/copilot/DATA_LOADER_QUICKSTART.md)** - Data loading details
+- **[Publishing Guide](docs/copilot/PUBLISHING_QUICKSTART.md)** - Package publishing
 
-## Commands
+## Command Overview
 
-### Graph Commands
+### Data Management
 ```bash
-hvx graphs list                    # List all available charts
-hvx graphs info <chart_id>         # Show chart details
-hvx graphs preview <chart_id>      # Generate preview with dummy data
+hvx data load <directory>              # Load multi-building data
+hvx data inspect <dataset.pkl>         # Inspect loaded data
 ```
 
-### Template Commands
+### Analysis
 ```bash
-hvx templates list                 # List all templates
-hvx templates show <name>          # Show template configuration
-hvx templates delete <name>        # Delete a user template
+hvx analyze run <dataset.pkl>          # Hierarchical analysis (modern)
+hvx analyze summary <analysis_dir>     # View analysis results
+
+hvx analytics run <csv_file>           # Single building analysis (legacy)
+hvx analytics show <name>              # View analysis details
 ```
 
-### Analytics Commands
+### Visualization & Reporting
 ```bash
-hvx analytics run <csv_file>       # Run analysis on data
-hvx analytics list                 # List all analyses
-hvx analytics show <name>          # Show analysis summary
-```
+hvx graphs list                        # List available charts
+hvx graphs preview <chart_id>          # Preview chart with dummy data
 
-### Report Commands
-```bash
+hvx templates create                   # Create report template
+hvx templates list                     # List available templates
+
 hvx reports generate <template> --data <analysis>  # Generate PDF report
-hvx reports list                                   # List all reports
 ```
 
-## Architecture
+## Workflows
 
-### JSON-First Workflow
+### Modern Workflow (Portfolio Analysis)
+
+For analyzing multiple buildings across a portfolio:
+
+```bash
+# 1. Load data from directory structure
+hvx data load data/my-buildings -o output/dataset.pkl -f pickle
+
+# 2. Run hierarchical analysis
+hvx analyze run output/dataset.pkl --portfolio-name "Q1 2024"
+
+# 3. View portfolio summary
+hvx analyze summary output/analysis
+
+# 4. Drill down to specific building
+hvx analyze summary output/analysis --level building --entity-id building-1
+
+# 5. Review problematic rooms
+hvx analyze summary output/analysis --level room --entity-id building_1_0_room_101
 ```
-CSV Data → Analytics Service → JSON → Report Service → PDF
-                                 ↓
-                            Charts (PNG)
-```
 
-### Directory Structure
-```
-src/                      # Main package (formerly ieq_analytics)
-├── core/                 # Core analytics engine
-│   └── analytics_engine.py
-├── models/               # Data models
-│   ├── enums.py
-│   └── analysis_result.py
-├── utils/                # Utilities
-├── graphs/               # Graph library
-│   ├── renderers/        # Modular chart renderers
-│   │   ├── bar_charts.py
-│   │   ├── line_charts.py
-│   │   ├── heatmaps.py
-│   │   └── compliance_charts.py
-│   ├── registry.yaml
-│   └── fixtures/         # Dummy data
-├── services/             # Service layer
-│   ├── graph_service.py
-│   ├── template_service.py
-│   ├── analytics_service.py
-│   └── report_service.py
-├── cli/                  # CLI commands
-│   ├── main.py
-│   └── commands/
-└── reporting/            # Report templates
+### Legacy Workflow (Single Building)
 
-User Data:
-~/.hvx/templates/         # User templates
+For quick analysis of a single building CSV file:
 
-Output:
-output/
-├── analysis/             # JSON results
-├── charts/               # Generated charts
-└── reports/              # PDF reports
+```bash
+# 1. Run analysis
+hvx analytics run data/building.csv --name my_building
+
+# 2. Generate report
+hvx reports generate simple_report --data my_building
+
+# 3. View report
+open output/reports/*.pdf
 ```
 
 ## Data Format
 
-Your CSV file should contain:
-- `timestamp` column (datetime)
-- Sensor data columns: `temperature`, `co2`, `humidity`, `occupancy`, etc.
+### Directory Structure (for portfolio analysis)
 
-Example:
+```
+data/
+└── buildings/
+    ├── building-1/
+    │   ├── climate/
+    │   │   └── climate-data.csv
+    │   └── sensors/
+    │       ├── room1.csv
+    │       └── room2.csv
+    └── building-2/
+        └── sensors/
+            └── room1.csv
+```
+
+### CSV Format
+
+All CSV files require:
+- `timestamp` column in ISO 8601 format
+- Sensor columns: `temperature`, `co2`, `humidity`, `occupancy`, etc.
+
 ```csv
 timestamp,temperature,co2,humidity,occupancy
 2024-01-01 00:00:00,20.5,450,55,0
 2024-01-01 01:00:00,20.3,430,54,0
 ```
 
-## Available Charts
+See [Data Commands Documentation](docs/cli/data.md) for detailed format requirements.
 
-1. **co2_compliance_bar** - CO2 compliance by period (bar chart)
-2. **temperature_timeseries** - Temperature over time (line chart)
-3. **occupancy_heatmap** - Occupancy patterns by day/hour (heatmap)
+## Architecture
 
-## Requirements
+### Analysis Pipeline
 
-- Python 3.9+
-- pandas >= 2.0.0
-- matplotlib >= 3.7.0
-- click >= 8.0.0
-- rich >= 13.0.0
-- reportlab >= 4.0.0
+```
+Directory Structure → Data Loader → Dataset (Pickle)
+                                      ↓
+                                   Analysis Engine
+                                      ↓
+                              Hierarchical Results (JSON)
+                                      ↓
+                            ┌─────────┴─────────┐
+                         Reports            Dashboards
+```
 
-See [setup.py](setup.py) for full dependencies.
+### Output Structure
 
-## Testing
+```
+output/
+├── dataset.pkl              # Loaded data
+├── dataset.json            # Data summary
+├── analysis/               # Analysis results
+│   ├── portfolio.json
+│   ├── buildings/*.json
+│   ├── levels/*.json
+│   └── rooms/*.json
+├── charts/                 # Generated charts
+└── reports/                # PDF reports
+```
+
+## Configuration
+
+### Analysis Configuration (`config/tests.yaml`)
+
+Define test criteria for IEQ parameters:
+
+```yaml
+parameters:
+  temperature:
+    tests:
+      - name: thermal_comfort
+        min: 20
+        max: 26
+        severity: HIGH
+  co2:
+    tests:
+      - name: air_quality
+        max: 1000
+        severity: CRITICAL
+```
+
+See documentation for complete configuration options.
+
+## Development
+
+### Running Tests
 
 ```bash
-# Run the test workflow
-./test_hvx_workflow.sh
+# Run test workflow
+./tests/test_hvx_workflow.sh
 
-# Generate sample data
-python3 -c "
-import pandas as pd
-import numpy as np
-from datetime import datetime, timedelta
+# Run specific tests
+pytest tests/
+```
 
-timestamps = [datetime(2024,1,1) + timedelta(hours=i) for i in range(168)]
-df = pd.DataFrame({
-    'timestamp': timestamps,
-    'temperature': 20 + 3*np.sin(np.linspace(0,14*np.pi,168)),
-    'co2': 400 + 300*np.sin(np.linspace(0,14*np.pi,168)),
-    'humidity': 50 + 10*np.sin(np.linspace(0,7*np.pi,168))
-})
-df.to_csv('my_data.csv', index=False)
-print('Sample data created: my_data.csv')
-"
+### Project Structure
+
+```
+analytics/
+├── src/                    # Source code
+│   ├── cli/               # CLI commands
+│   ├── core/              # Core analytics engine
+│   ├── models/            # Data models
+│   ├── services/          # Service layer
+│   ├── graphs/            # Chart library
+│   └── reporting/         # Report templates
+├── config/                # Configuration files
+├── docs/                  # Documentation
+├── tests/                 # Test files
+└── output/               # Generated outputs
+```
+
+## Examples
+
+### Complete Analysis Example
+
+```bash
+# Load data
+hvx data load data/samples/sample-extensive-data -o output/dataset.pkl -f pickle
+
+# Inspect data
+hvx data inspect output/dataset.pkl
+
+# Run analysis
+hvx analyze run output/dataset.pkl --portfolio-name "HTK Portfolio"
+
+# View portfolio summary
+hvx analyze summary output/analysis --level portfolio
+
+# Check specific building
+hvx analyze summary output/analysis --level building --entity-id building-1
+
+# Generate custom report (legacy workflow)
+hvx templates create
+hvx analytics run data/building.csv --name building1
+hvx reports generate my_template --data building1
+```
+
+### Explore Charts
+
+```bash
+# List available charts
+hvx graphs list
+
+# Preview chart
+hvx graphs preview co2_compliance_bar -o preview.png
+
+# Get chart details
+hvx graphs info temperature_timeseries
 ```
 
 ## Contributing
 
-This is an open-source project. Contributions welcome!
+Contributions are welcome! Please:
+1. Fork the repository
+2. Create a feature branch
+3. Submit a pull request
 
 ## License
 
-MIT License
+MIT License - See [LICENSE](LICENSE) for details
 
 ## Support
 
-For issues or questions, see:
-- [Quick Start Guide](docs/QUICKSTART.md)
+- **Documentation**: [docs/cli/](docs/cli/)
+- **Issues**: [GitHub Issues](https://github.com/bruadam/hvx/issues)
+- **Quick Start**: [docs/QUICKSTART.md](docs/QUICKSTART.md)
+
+## Acknowledgments
+
+Built for facility management and building performance analysis. Open source, transparent, and extensible.

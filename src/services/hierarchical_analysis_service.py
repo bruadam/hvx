@@ -19,7 +19,7 @@ from src.models.analysis_models import (
     RoomAnalysis, LevelAnalysis, BuildingAnalysis, PortfolioAnalysis,
     AnalysisResults, TestResult, AnalysisSeverity, AnalysisStatus
 )
-from src.core.analytics_engine import UnifiedAnalyticsEngine, AnalysisType
+from src.core.analytics_engine import UnifiedAnalyticsEngine, AnalysisType, UnifiedFilterProcessor
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +37,8 @@ class HierarchicalAnalysisService:
         self.config_path = config_path or Path("config/tests.yaml")
         self.config = self._load_config()
         self.analytics_engine = None
+        # Initialize filter processor with config
+        self.filter_processor = UnifiedFilterProcessor(self.config)
     
     def _load_config(self) -> Dict[str, Any]:
         """Load analysis configuration."""
@@ -210,6 +212,8 @@ class HierarchicalAnalysisService:
             threshold = test_config.get('limit', test_config.get('threshold'))
             mode = test_config.get('mode', 'bidirectional')
             description = test_config.get('description', '')
+            filter_name = test_config.get('filter')
+            period_name = test_config.get('period')
             
             if threshold is None:
                 return None
@@ -218,6 +222,14 @@ class HierarchicalAnalysisService:
             df = ts.data
             if parameter not in df.columns:
                 return None
+            
+            # Apply temporal filter if specified
+            if filter_name:
+                logger.debug(f"Applying filter '{filter_name}' for test '{test_name}'")
+                df = self.filter_processor.apply_filter(df, filter_name, period_name or '')
+                if df.empty:
+                    logger.warning(f"Filter '{filter_name}' resulted in empty dataframe for test '{test_name}'")
+                    return None
             
             data_series = df[parameter].dropna()
             if len(data_series) == 0:

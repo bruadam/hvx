@@ -56,6 +56,16 @@ class TestResult(BaseModel):
     period: Optional[str] = Field(None, description="Time period analyzed (all_year, summer, etc.)")
     filter_applied: Optional[str] = Field(None, description="Filter applied (opening_hours, etc.)")
     
+    # Weather correlations with non-compliance
+    weather_correlations: Dict[str, float] = Field(
+        default_factory=dict,
+        description="Correlation coefficients between non-compliance and weather factors (outdoor_temp, radiation, sunshine)"
+    )
+    non_compliance_weather_stats: Dict[str, Dict[str, float]] = Field(
+        default_factory=dict,
+        description="Weather statistics during non-compliant periods (mean, min, max for each weather parameter)"
+    )
+    
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary."""
         return self.model_dump()
@@ -89,6 +99,12 @@ class RoomAnalysis(BaseModel):
     
     # Aggregated statistics
     statistics: Dict[str, Dict[str, float]] = Field(default_factory=dict, description="Stats by parameter")
+    
+    # Weather correlation summary
+    weather_correlation_summary: Dict[str, Any] = Field(
+        default_factory=dict,
+        description="Summary of weather correlations with non-compliance across all tests"
+    )
     
     # Issues and recommendations
     critical_issues: List[str] = Field(default_factory=list, description="Critical issues found")

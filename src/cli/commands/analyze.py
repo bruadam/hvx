@@ -35,6 +35,10 @@ def analyze_cli():
     help='Path to tests configuration file'
 )
 @click.option(
+    '--test-set',
+    help='Name of test set to use (instead of all tests in config)'
+)
+@click.option(
     '--output',
     type=click.Path(path_type=Path),
     default='output/analysis',
@@ -51,6 +55,11 @@ def analyze_cli():
     help='Skip saving individual JSON files per room/level/building'
 )
 @click.option(
+    '--explore',
+    is_flag=True,
+    help='Launch interactive analysis explorer after completion'
+)
+@click.option(
     '--verbose',
     is_flag=True,
     help='Show verbose output'
@@ -58,32 +67,62 @@ def analyze_cli():
 def run_analysis(
     dataset_file: Path,
     config: Path,
+    test_set: Optional[str],
     output: Path,
     portfolio_name: str,
     no_individual_files: bool,
+    explore: bool,
     verbose: bool
 ):
     """
     Run hierarchical analysis on a loaded dataset.
-    
+
     Performs analysis at room, level, building, and portfolio levels.
     Results are saved as JSON files in a hierarchical structure.
-    
+
     Example:
         hvx analyze run output/dataset.pkl --config config/tests.yaml
+        hvx analyze run output/dataset.pkl --test-set summer_analysis
+        hvx analyze run output/dataset.pkl --explore
     """
     if verbose:
         logging.basicConfig(level=logging.INFO)
-    
+
     try:
+        # Handle test set if specified
+        config_to_use = config
+        if test_set:
+            from src.services.test_management_service import TestManagementService
+            import tempfile
+
+            # Create temporary config with only the test set
+            service = TestManagementService(config)
+            if not service.get_test_set(test_set):
+                console.print(f"[red]✗ Test set '{test_set}' not found in config.[/red]")
+                console.print(f"[yellow]Available test sets:[/yellow]")
+                for ts in service.list_test_sets():
+                    console.print(f"  • {ts.name}")
+                raise click.Abort()
+
+            # Export test set to temporary file
+            import os
+            fd, temp_path = tempfile.mkstemp(suffix='.yaml')
+            os.close(fd)
+            temp_config = Path(temp_path)
+            service.export_test_set_config(test_set, temp_config)
+            config_to_use = temp_config
+
+            console.print(f"[green]✓ Using test set: {test_set}[/green]\n")
+
         console.print(Panel.fit(
             f"[bold blue]Hierarchical Analysis[/bold blue]\n"
             f"Dataset: {dataset_file}\n"
             f"Config: {config}\n"
-            f"Output: {output}",
+            + (f"Test Set: {test_set}\n" if test_set else "")
+            + f"Output: {output}",
             border_style="blue"
         ))
-        
+
         # Load dataset
         with Progress(
             SpinnerColumn(),
@@ -93,12 +132,12 @@ def run_analysis(
             task = progress.add_task("Loading dataset...", total=None)
             dataset = BuildingDataset.load_from_pickle(dataset_file)
             progress.update(task, completed=True)
-        
+
         console.print(f"✓ Loaded {dataset.get_building_count()} buildings "
                      f"with {dataset.get_total_room_count()} rooms\n")
-        
+
         # Initialize analysis service
-        service = HierarchicalAnalysisService(config_path=config)
+        service = HierarchicalAnalysisService(config_path=config_to_use)
         
         # Run analysis
         with Progress(
@@ -122,6 +161,12 @@ def run_analysis(
         
         console.print(f"\n✓ Analysis complete! Results saved to: [cyan]{output}[/cyan]")
         
+        # Launch explorer if requested
+        if explore:
+            console.print("\n[bold cyan]Launching analysis explorer...[/bold cyan]")
+            from src.utils.analysis_explorer import launch_analysis_explorer
+            launch_analysis_explorer(output)
+        
     except FileNotFoundError as e:
         console.print(f"[red]✗ Error:[/red] {e}", style="red")
         raise click.Abort()
@@ -129,6 +174,34 @@ def run_analysis(
         console.print(f"[red]✗ Error during analysis:[/red] {e}", style="red")
         if verbose:
             console.print_exception()
+        raise click.Abort()
+
+
+@analyze_cli.command(name='explore')
+@click.argument('analysis_dir', type=click.Path(exists=True, path_type=Path), default='output/analysis')
+def explore_analysis(analysis_dir: Path):
+    """
+    Launch interactive explorer for browsing analysis results.
+    
+    Navigate through the hierarchical analysis results from portfolio → buildings → levels → rooms.
+    View test results, compliance rates, issues, and recommendations at each level.
+    
+    Example:
+        hvx analyze explore output/analysis
+        hvx analyze explore  # Uses default output/analysis directory
+    """
+    try:
+        from src.utils.analysis_explorer import launch_analysis_explorer
+        
+        console.print(f"[bold cyan]Loading analysis from:[/bold cyan] {analysis_dir}\n")
+        launch_analysis_explorer(analysis_dir)
+        
+    except FileNotFoundError as e:
+        console.print(f"[red]✗ Error:[/red] {e}", style="red")
+        raise click.Abort()
+    except Exception as e:
+        console.print(f"[red]✗ Error launching explorer:[/red] {e}", style="red")
+        console.print_exception()
         raise click.Abort()
 
 

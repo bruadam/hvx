@@ -1,8 +1,9 @@
 """Utility modules for IEQ Analytics."""
 
-from src.utils.mapping import *
+# NOTE: mapping module has legacy dependencies, import explicitly if needed
+# from src.utils.mapping import *
 
 __all__ = [
-    'ParameterMapping',
-    'create_parameter_mapping',
+    # 'ParameterMapping',
+    # 'create_parameter_mapping',
 ]
