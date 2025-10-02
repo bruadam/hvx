@@ -1,13 +1,19 @@
-"""Services module for HVX."""
+"""Services module for IEQ Analytics."""
 
-from src.services.graph_service import GraphService
-from src.services.template_service import TemplateService
-from src.services.analytics_service import AnalyticsService
-from src.services.report_service import ReportService
+from src.services.analytics_service import *
+from src.services.graph_service import *
+from src.services.report_service import *
+from src.services.template_service import *
+from src.services.data_loader_service import *
+from src.services.hierarchical_analysis_service import *
 
 __all__ = [
-    'GraphService',
-    'TemplateService',
     'AnalyticsService',
+    'GraphService',
     'ReportService',
+    'TemplateService',
+    'DataLoaderService',
+    'create_data_loader',
+    'HierarchicalAnalysisService',
+    'create_hierarchical_analysis_service',
 ]

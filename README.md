@@ -1,10 +1,10 @@
-# HVX - HVAC Analytics
+# HVX CLI
 
 A command-line tool for analyzing Indoor Environmental Quality (IEQ) and energy efficiency data in buildings.
 
 ## Features
 
-- **Graph Library**: 3 built-in charts (CO2 compliance, temperature, occupancy)
+- **Graph Library**: Visualize data with various chart types
 - **Template Management**: Create custom report templates
 - **Analytics Engine**: Run IEQ analysis on sensor data
 - **PDF Reports**: Generate professional reports with charts
@@ -181,5 +181,4 @@ MIT License
 ## Support
 
 For issues or questions, see:
-- [Complete Documentation](docs/HVX_CLI_IMPLEMENTATION_COMPLETE.md)
 - [Quick Start Guide](docs/QUICKSTART.md)

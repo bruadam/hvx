@@ -1,0 +1,17 @@
+# Template for ~/.pypirc
+# This file stores your PyPI credentials for easy uploading
+# Copy this to ~/.pypirc and fill in your tokens
+
+[distutils]
+index-servers =
+    pypi
+    testpypi
+
+[pypi]
+username = __token__
+password = pypi-YOUR_PYPI_API_TOKEN_HERE
+
+[testpypi]
+repository = https://test.pypi.org/legacy/
+username = __token__
+password = pypi-YOUR_TEST_PYPI_API_TOKEN_HERE

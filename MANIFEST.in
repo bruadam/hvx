@@ -1,0 +1,27 @@
+# Include package data
+include README.md
+include LICENSE
+include requirements.txt
+include setup.py
+include pyproject.toml
+
+# Include configuration files
+recursive-include config *.yaml *.json
+
+# Include graph fixtures and registry
+recursive-include src/graphs/fixtures *.json
+include src/graphs/registry.yaml
+
+# Include reporting templates
+recursive-include src/reporting/templates *.yaml
+recursive-include src/reporting/charts *.py
+
+# Exclude unnecessary files
+exclude .gitignore
+exclude .github
+recursive-exclude * __pycache__
+recursive-exclude * *.py[co]
+recursive-exclude * .DS_Store
+recursive-exclude tests *
+recursive-exclude docs *
+recursive-exclude output *

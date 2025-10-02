@@ -28,6 +28,7 @@ share/python-wheels/
 MANIFEST
 
 # Virtual environments
+.venv/
 venv/
 ENV/
 env/
@@ -85,3 +86,6 @@ output/
 .env
 
 .DS_Store
+
+.claude
+docs/copilot/

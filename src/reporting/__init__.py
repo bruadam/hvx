@@ -5,15 +5,6 @@ Comprehensive reporting engine for Indoor Environmental Quality analytics,
 including PDF generation, graph creation, and templated report types.
 """
 
-from .report_engine import ReportEngine
-from .graph_engine import GraphEngine, GraphType
-from .pdf_generator import PDFGenerator
-from .data_processor import ReportDataProcessor
+# New architecture - templates and charts are now modular
 
-__all__ = [
-    'ReportEngine',
-    'GraphEngine', 
-    'GraphType',
-    'PDFGenerator',
-    'ReportDataProcessor'
-]
+__all__ = []
