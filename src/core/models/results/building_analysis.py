@@ -7,10 +7,11 @@ from pydantic import BaseModel, Field
 import json
 
 from src.core.models.enums import Status
+from src.core.models.domain.brick_base import BrickSchemaEntity
 
 
-class BuildingAnalysis(BaseModel):
-    """Aggregated analysis results for a building."""
+class BuildingAnalysis(BrickSchemaEntity):
+    """Aggregated analysis results for a building with Brick Schema compatibility."""
 
     # Identification
     building_id: str = Field(..., description="Unique building identifier")
@@ -63,6 +64,25 @@ class BuildingAnalysis(BaseModel):
 
     # Metadata
     metadata: Dict[str, Any] = Field(default_factory=dict, description="Additional metadata")
+    
+    def __init__(self, **data):
+        """Initialize BuildingAnalysis with Brick Schema support."""
+        super().__init__(**data)
+        
+        # Auto-generate Brick URI for analysis results
+        if not self.brick_uri and hasattr(self, 'building_id'):
+            timestamp = self.analysis_timestamp.strftime('%Y%m%d%H%M%S') if hasattr(self, 'analysis_timestamp') else 'unknown'
+            self.brick_uri = f"urn:building:{self.building_id}:analysis:{timestamp}"
+        
+        # Set Brick type for analysis results
+        if not self.brick_type:
+            self.brick_type = "brick:Analysis_Result"
+        
+        # Add analysis metadata to Brick metadata
+        if hasattr(self, 'avg_compliance_rate'):
+            self.brick_metadata['avgComplianceRate'] = self.avg_compliance_rate
+        if hasattr(self, 'avg_quality_score'):
+            self.brick_metadata['avgQualityScore'] = self.avg_quality_score
 
     def save_to_json(self, filepath: Path) -> None:
         """Save analysis to JSON file."""
@@ -76,3 +96,4 @@ class BuildingAnalysis(BaseModel):
         with open(filepath, 'r', encoding='utf-8') as f:
             data = json.load(f)
         return cls(**data)
+

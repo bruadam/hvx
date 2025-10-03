@@ -8,10 +8,18 @@ import numpy as np
 from src.core.models.enums import RoomType
 from src.core.models.domain.timeseries import TimeSeriesData
 from src.core.models.domain.data_quality import DataQuality
+from src.core.models.domain.brick_base import BrickSchemaSpace
 
 
-class Room(BaseModel):
-    """Enhanced room model with timeseries data."""
+class Room(BrickSchemaSpace):
+    """Enhanced room model with timeseries data and Brick Schema compatibility.
+    
+    This model extends BrickSchemaSpace to provide semantic interoperability
+    with Brick Schema ontology while maintaining analytical capabilities.
+    """
+    
+    # Default Brick type for rooms
+    _default_brick_type: str = "brick:Room"
 
     id: str = Field(..., description="Unique room identifier")
     name: str = Field(..., description="Human-readable room name")
@@ -35,6 +43,25 @@ class Room(BaseModel):
         if not v or not v.strip():
             raise ValueError("String fields cannot be empty")
         return v.strip()
+    
+    def __init__(self, **data):
+        """Initialize Room with Brick Schema support."""
+        super().__init__(**data)
+        
+        # Auto-generate Brick URI if not provided
+        if not self.brick_uri and hasattr(self, 'id') and hasattr(self, 'building_id'):
+            # Create a standard URI pattern
+            self.brick_uri = f"urn:building:{self.building_id}:room:{self.id}"
+        
+        # Set Brick metadata based on room properties
+        if self.room_type:
+            self.brick_metadata['roomType'] = str(self.room_type)
+        if self.area_m2:
+            self.brick_metadata['area'] = {'value': self.area_m2, 'unit': 'squareMeter'}
+        if self.volume_m3:
+            self.brick_metadata['volume'] = {'value': self.volume_m3, 'unit': 'cubicMeter'}
+        if self.capacity_people:
+            self.brick_metadata['capacity'] = self.capacity_people
 
     def add_timeseries(self, parameter: str, ts: TimeSeriesData) -> None:
         """Add a timeseries for a sensor parameter."""
@@ -64,3 +91,4 @@ class Room(BaseModel):
 
         completeness_scores = [ts.data_quality.completeness for ts in self.timeseries.values()]
         return float(np.mean(completeness_scores)) if completeness_scores else 0.0
+

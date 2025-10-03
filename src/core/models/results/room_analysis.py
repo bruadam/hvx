@@ -8,10 +8,15 @@ import json
 
 from src.core.models.enums import Status
 from src.core.models.results.test_result import TestResult
+from src.core.models.domain.brick_base import BrickSchemaEntity
 
 
-class RoomAnalysis(BaseModel):
-    """Analysis results for a single room."""
+class RoomAnalysis(BrickSchemaEntity):
+    """Analysis results for a single room with Brick Schema compatibility.
+    
+    This model extends BrickSchemaEntity to provide semantic metadata
+    alongside analytical results.
+    """
 
     # Identification
     room_id: str = Field(..., description="Unique room identifier")
@@ -55,6 +60,25 @@ class RoomAnalysis(BaseModel):
 
     # Metadata
     metadata: Dict[str, Any] = Field(default_factory=dict, description="Additional metadata")
+    
+    def __init__(self, **data):
+        """Initialize RoomAnalysis with Brick Schema support."""
+        super().__init__(**data)
+        
+        # Auto-generate Brick URI for analysis results
+        if not self.brick_uri and hasattr(self, 'room_id') and hasattr(self, 'building_id'):
+            timestamp = self.analysis_timestamp.strftime('%Y%m%d%H%M%S') if hasattr(self, 'analysis_timestamp') else 'unknown'
+            self.brick_uri = f"urn:building:{self.building_id}:room:{self.room_id}:analysis:{timestamp}"
+        
+        # Set Brick type for analysis results
+        if not self.brick_type:
+            self.brick_type = "brick:Analysis_Result"  # Custom extension of Brick Schema
+        
+        # Add analysis metadata to Brick metadata
+        if hasattr(self, 'overall_compliance_rate'):
+            self.brick_metadata['complianceRate'] = self.overall_compliance_rate
+        if hasattr(self, 'overall_quality_score'):
+            self.brick_metadata['qualityScore'] = self.overall_quality_score
 
     def add_test_result(self, test_name: str, result: TestResult) -> None:
         """Add a test result."""
@@ -78,3 +102,4 @@ class RoomAnalysis(BaseModel):
         with open(filepath, 'r', encoding='utf-8') as f:
             data = json.load(f)
         return cls(**data)
+
