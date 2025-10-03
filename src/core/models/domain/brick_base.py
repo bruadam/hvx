@@ -6,7 +6,9 @@ with our domain models, enabling semantic interoperability and standardization.
 
 from typing import Optional, Dict, Any, List
 from pydantic import BaseModel, Field
-from brickschema.namespaces import BRICK
+from brickschema.namespaces import BRICK, RDF, RDFS
+from brickschema import Graph
+from rdflib import URIRef, Literal
 
 
 class BrickSchemaEntity(BaseModel):
@@ -100,6 +102,75 @@ class BrickSchemaEntity(BaseModel):
             
         return brick_data
     
+    def to_brick_graph(self, graph: Optional[Graph] = None) -> Graph:
+        """Export entity to a Brick Schema RDF graph.
+        
+        Args:
+            graph: Optional existing graph to add to. If None, creates new graph.
+            
+        Returns:
+            Brick Schema graph with this entity
+        """
+        if graph is None:
+            graph = Graph()
+            graph.bind("brick", BRICK)
+        
+        if not self.brick_uri:
+            raise ValueError("brick_uri must be set to export to RDF")
+        
+        # Convert to URIRef
+        subject_uri = URIRef(self.brick_uri)
+        
+        # Add type triple
+        if self.brick_type:
+            type_uri = self.get_brick_type_uri()
+            if type_uri:
+                graph.add((
+                    subject_uri,
+                    RDF.type,
+                    URIRef(type_uri)
+                ))
+        
+        # Add relationship triples
+        for predicate, targets in self.brick_relationships.items():
+            # Convert predicate to URI
+            if predicate.startswith('http'):
+                pred_uri = URIRef(predicate)
+            elif ':' in predicate:
+                prefix, local = predicate.split(':', 1)
+                if prefix == 'brick':
+                    pred_uri = BRICK[local]
+                else:
+                    pred_uri = URIRef(predicate)
+            else:
+                pred_uri = BRICK[predicate]
+            
+            # Add triples for each target
+            for target in targets:
+                graph.add((subject_uri, pred_uri, URIRef(target)))
+        
+        # Add metadata as literals
+        for key, value in self.brick_metadata.items():
+            if isinstance(value, (str, int, float, bool)):
+                # Convert to valid URI for predicate
+                pred_uri = BRICK[key] if not key.startswith('http') else URIRef(key)
+                graph.add((subject_uri, pred_uri, Literal(value)))
+            elif isinstance(value, dict):
+                # Handle complex metadata (e.g., measurements with units)
+                # Skip for now or convert to string
+                continue
+        
+        return graph
+    
+    def to_brick_turtle(self) -> str:
+        """Export entity as Turtle/TTL format.
+        
+        Returns:
+            Turtle serialization of the entity
+        """
+        graph = self.to_brick_graph()
+        return graph.serialize(format='turtle')
+    
     def validate_brick_schema(self) -> bool:
         """Validate that the entity conforms to Brick Schema.
         
@@ -140,3 +211,5 @@ class BrickSchemaPoint(BrickSchemaEntity):
         # Auto-set brick type for points
         if not self.brick_type and self.point_type:
             self.brick_type = f"brick:{self.point_type}"
+
+
