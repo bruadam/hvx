@@ -446,10 +446,10 @@ class InteractiveWorkflow:
 
         for building, room in rooms:
             # Try to infer first
-            inferred_type = self._infer_room_type_from_name(room.room_name)
+            inferred_type = self._infer_room_type_from_name(room.name)
 
             if inferred_type:
-                console.print(f"[cyan]{room.room_name}[/cyan] (Building: {building.building_name})")
+                console.print(f"[cyan]{room.name}[/cyan] (Building: {building.name})")
                 console.print(f"  [dim]Suggested: {inferred_type.value}[/dim]")
 
                 if Confirm.ask("  Use suggestion?", default=True):
@@ -457,7 +457,7 @@ class InteractiveWorkflow:
                     continue
 
             # Manual selection
-            console.print(f"\n[cyan]{room.room_name}[/cyan] (Building: {building.building_name})")
+            console.print(f"\n[cyan]{room.name}[/cyan] (Building: {building.name})")
             choice = Prompt.ask("  Select type", choices=list(type_choices.keys()), default="10")  # Default to OTHER
             room.room_type = type_choices[choice]
 
@@ -1163,27 +1163,122 @@ class InteractiveWorkflow:
 
     def _generate_predefined_report(self) -> bool:
         """Generate report using predefined template."""
+        from src.core.reporting.UnifiedReportService import UnifiedReportService
+
+        # Initialize report service
+        report_service = UnifiedReportService()
+
+        # List available templates
+        templates = report_service.list_templates()
+
+        if not templates:
+            console.print("[yellow]No report templates found. Please create templates in config/report_templates/[/yellow]\n")
+            return False
+
         console.print("\n[bold]Available templates:[/bold]\n")
-        console.print("  1. Portfolio Summary")
-        console.print("  2. Building Report")
-        console.print("  3. Detailed Analysis Report")
+
+        for i, template in enumerate(templates, 1):
+            console.print(f"  [cyan]{i}.[/cyan] {template['name']}")
+            console.print(f"      [dim]{template['description']}[/dim]")
+
         console.print()
 
-        template_choice = Prompt.ask("[bold]Select template[/bold]", choices=["1", "2", "3"], default="1")
+        # Get template choice
+        choices = [str(i) for i in range(1, len(templates) + 1)]
+        template_choice = Prompt.ask("[bold]Select template[/bold]", choices=choices, default="1")
 
-        template_map = {
-            "1": "portfolio_summary",
-            "2": "building_report",
-            "3": "detailed_analysis"
+        selected_template = templates[int(template_choice) - 1]
+        template_name = selected_template['template_id']
+
+        # Choose format
+        console.print("\n[bold]Output format:[/bold]")
+        console.print("  1. HTML (viewable in browser)")
+        console.print("  2. PDF (requires weasyprint or pdfkit)")
+        console.print("  3. Both HTML and PDF")
+        console.print()
+
+        format_choice = Prompt.ask("[bold]Choose format[/bold]", choices=["1", "2", "3"], default="1")
+
+        format_map = {
+            "1": "html",
+            "2": "pdf",
+            "3": "both"
         }
 
-        template_name = template_map.get(template_choice, "portfolio_summary")
+        output_format = format_map.get(format_choice, "html")
 
-        console.print(f"\n[green]✓[/green] Using template: {template_name}")
-        console.print(f"[dim]Report would be generated at: output/reports/{template_name}.pdf[/dim]\n")
-        console.print("[yellow]Note: PDF generation requires template configuration[/yellow]\n")
+        # Check PDF backend if PDF is requested
+        if output_format in ['pdf', 'both']:
+            backend_info = report_service.get_pdf_backend_info()
+            current_backend = backend_info['current_backend']
 
-        return True
+            if current_backend == 'none':
+                console.print("\n[yellow]⚠ No PDF backend available.[/yellow]")
+                console.print("[dim]Install weasyprint for best results: pip install weasyprint[/dim]\n")
+
+                if not Confirm.ask("Generate HTML only instead?", default=True):
+                    return False
+
+                output_format = "html"
+            elif current_backend == 'reportlab':
+                console.print(f"\n[yellow]⚠ Using basic PDF backend ({current_backend}).[/yellow]")
+                console.print("[dim]For better HTML/CSS rendering, install weasyprint: pip install weasyprint[/dim]\n")
+
+        # Load weather data if available
+        weather_data = self._load_weather_data_if_available()
+
+        # Generate report
+        try:
+            with Live(
+                Text(f"Generating {output_format} report...", style="cyan"),
+                console=console,
+                transient=True
+            ) as live:
+                result = report_service.generate_report(
+                    template_name=template_name,
+                    analysis_results=self.analysis_results,
+                    dataset=self.dataset,
+                    weather_data=weather_data,
+                    format=output_format
+                )
+
+            if result['status'] == 'success':
+                console.print(f"\n[green]✓ Report generated successfully![/green]\n")
+                console.print(f"[bold]Output:[/bold] {result['primary_output']}")
+
+                if output_format == 'both':
+                    console.print(f"[bold]HTML:[/bold] {result['html']['output_path']}")
+                    if result['pdf']['status'] == 'success':
+                        console.print(f"[bold]PDF:[/bold] {result['pdf']['output_path']}")
+
+                console.print()
+
+                # Offer to open report
+                if Confirm.ask("[bold]Open report in browser/viewer?[/bold]", default=True):
+                    import webbrowser
+                    import platform
+
+                    output_path = result['primary_output']
+
+                    if result['format'] == 'html':
+                        webbrowser.open(f'file://{output_path.absolute()}')
+                    elif result['format'] == 'pdf' and platform.system() == 'Darwin':
+                        # macOS: use 'open' command
+                        import subprocess
+                        subprocess.run(['open', str(output_path)])
+                    else:
+                        console.print(f"[dim]Please open: {output_path}[/dim]")
+
+                return True
+            else:
+                console.print(f"\n[red]✗ Report generation failed:[/red] {result.get('message', 'Unknown error')}\n")
+                return False
+
+        except Exception as e:
+            console.print(f"\n[red]✗ Error generating report:[/red] {str(e)}\n")
+            if self.verbose:
+                console.print_exception()
+            return False
 
     def _generate_custom_report(self) -> bool:
         """Generate custom report with user-defined sections."""
@@ -1402,7 +1497,7 @@ class InteractiveWorkflow:
     def _show_support_contact(self, error_context: str):
         """Show support contact information."""
         console.print("\n[bold cyan]Contact Support[/bold cyan]\n")
-        console.print("Email: support@hvx.com")
+        console.print("Email: bruno.adam@pm.me")
         console.print(f"Subject: IEQ Analytics Error - {error_context}\n")
         console.print("[dim]Please include details about what you were trying to do.[/dim]\n")
 

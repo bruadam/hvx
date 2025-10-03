@@ -1,10 +1,11 @@
 """
-IEQ Analytics Reporting Module
+Reporting Module
 
-Comprehensive reporting engine for Indoor Environmental Quality analytics,
-including PDF generation, graph creation, and templated report types.
+Comprehensive reporting engine for generating HTML and PDF reports based on analysis results.
 """
 
 # New architecture - templates and charts are now modular
 
 __all__ = []
+__author__ = "Bruno Adam"
+__version__ = "0.1.0"

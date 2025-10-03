@@ -8,6 +8,21 @@ output_format: pdf
 page_size: A4
 orientation: portrait
 default_level: building
+
+# Analytics Requirements for this template
+analytics_requirements:
+  # This template requires basic compliance and statistics
+  analytics_tags:
+    - statistics.basic
+    - compliance.overall
+    - data_quality.completeness
+    - performance.scoring
+  required_parameters:
+    - temperature
+    - co2
+  required_level: building
+  min_data_quality: 0.7
+
 sections:
 - section_type: metadata
   section_id: metadata
@@ -25,11 +40,22 @@ sections:
     include_notes: false
     notes: null
     custom_fields: {}
+
 - section_type: summary
   section_id: executive_summary
   enabled: true
   page_break_before: false
   page_break_after: false
+  # Analytics requirements for this section
+  analytics_requirements:
+    analytics_tags:
+      - statistics.basic
+      - compliance.overall
+      - performance.scoring
+      - data_quality.completeness
+    required_parameters:
+      - temperature
+      - co2
   summary:
     level: building
     include_metrics: true
@@ -40,11 +66,20 @@ sections:
     include_worst_performing: true
     top_n: 5
     custom_metrics: []
+
 - section_type: issues
   section_id: critical_issues
   enabled: true
   page_break_before: false
   page_break_after: false
+  # Analytics requirements for this section
+  analytics_requirements:
+    analytics_tags:
+      - compliance.overall
+      - compliance.threshold
+    required_tests:
+      - temperature_*
+      - co2_*
   issues:
     level: building
     include_critical: true
@@ -53,15 +88,24 @@ sections:
     include_low: false
     max_issues: 10
     group_by: null
+
 - section_type: recommendations
   section_id: recommendations
   enabled: true
   page_break_before: false
   page_break_after: false
+  # Analytics requirements for this section
+  analytics_requirements:
+    analytics_tags:
+      - recommendations.operational
+      - recommendations.hvac
+      - recommendations.ventilation
+      - compliance.overall
   recommendations:
     level: building
     max_recommendations: 10
     priority_filter: null
     group_by: null
+
 global_filters: {}
 global_config: {}

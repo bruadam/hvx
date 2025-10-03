@@ -1,0 +1,253 @@
+# Building Detailed Report Template
+# Detailed analysis report for a single building with room-by-room breakdown
+
+template_id: building_detailed
+name: Building Detailed Report
+description: Comprehensive building analysis with room-level details, environmental trends, and actionable recommendations
+version: "1.0"
+author: HVX Analytics
+
+# Analytics Requirements for entire template
+analytics_requirements:
+  analytics_tags:
+    - statistics.basic
+    - statistics.trends
+    - compliance.overall
+    - compliance.temporal
+    - compliance.spatial
+    - temporal.hourly
+    - temporal.daily
+    - spatial.room_level
+    - spatial.comparison
+    - recommendations.operational
+    - recommendations.hvac
+    - recommendations.ventilation
+    - data_quality.completeness
+    - performance.scoring
+    - performance.ranking
+  required_parameters:
+    - temperature
+    - co2
+  required_level: room
+  min_data_quality: 0.6
+  min_time_range_days: 7
+
+report:
+  title: "Building Environmental Quality Report"
+  subtitle: "Detailed IEQ Performance Analysis"
+  format: html
+  theme: modern
+
+page:
+  size: A4
+  orientation: portrait
+  margins:
+    top: 2cm
+    bottom: 2cm
+    left: 2cm
+    right: 2cm
+
+sections:
+  - section_id: cover
+    type: cover
+    title: "Building IEQ Analysis"
+    include_date: true
+    include_building_name: true
+
+  - section_id: building_summary
+    type: summary
+    title: "Building Summary"
+    # Analytics requirements for this section
+    analytics_requirements:
+      analytics_tags:
+        - statistics.basic
+        - compliance.overall
+        - data_quality.completeness
+    content:
+      - building_metrics
+      - compliance_rates
+      - room_count
+      - data_quality
+
+  - section_id: key_findings
+    type: text
+    title: "Key Findings"
+    content: auto  # Auto-generate from analysis
+
+  - section_id: compliance_overview
+    type: charts
+    title: "Compliance Overview"
+    # Analytics requirements for this section
+    analytics_requirements:
+      analytics_tags:
+        - compliance.overall
+        - compliance.spatial
+        - spatial.comparison
+    charts:
+      - id: compliance_overview
+        title: "Overall Compliance"
+        width: full
+        analytics_requirements:
+          analytics_tags:
+            - compliance.overall
+
+      - id: room_compliance_comparison
+        title: "Room Comparison"
+        width: full
+        analytics_requirements:
+          analytics_tags:
+            - spatial.comparison
+            - spatial.room_level
+
+  - section_id: environmental_conditions
+    type: charts
+    title: "Environmental Conditions"
+    # Analytics requirements for this section
+    analytics_requirements:
+      analytics_tags:
+        - temporal.hourly
+        - temporal.daily
+        - statistics.trends
+    charts:
+      - id: temperature_heatmap
+        title: "Temperature Patterns"
+        width: full
+        height: 400px
+        analytics_requirements:
+          analytics_tags:
+            - temporal.hourly
+            - temporal.daily
+          required_parameters:
+            - temperature
+
+      - id: co2_heatmap
+        title: "CO2 Patterns"
+        width: full
+        height: 400px
+        analytics_requirements:
+          analytics_tags:
+            - temporal.hourly
+            - temporal.daily
+          required_parameters:
+            - co2
+
+      - id: room_temperature_co2
+        title: "Temperature and CO2 Trends"
+        width: full
+        height: 350px
+        analytics_requirements:
+          analytics_tags:
+            - statistics.trends
+          required_parameters:
+            - temperature
+            - co2
+
+  - section_id: seasonal_performance
+    type: charts
+    title: "Seasonal Performance"
+    # Analytics requirements for this section
+    analytics_requirements:
+      analytics_tags:
+        - temporal.seasonal
+        - statistics.trends
+    charts:
+      - id: seasonal_analysis
+        title: "Seasonal Variations"
+        width: full
+        analytics_requirements:
+          analytics_tags:
+            - temporal.seasonal
+
+      - id: daily_patterns
+        title: "Daily Patterns"
+        width: full
+        analytics_requirements:
+          analytics_tags:
+            - temporal.daily
+
+  - section_id: non_compliance_analysis
+    type: charts
+    title: "Non-Compliance Analysis"
+    # Analytics requirements for this section
+    analytics_requirements:
+      analytics_tags:
+        - compliance.temporal
+        - compliance.threshold
+    charts:
+      - id: non_compliant_opening_hours
+        title: "Non-Compliance During Opening Hours"
+        width: full
+        height: 350px
+        analytics_requirements:
+          analytics_tags:
+            - compliance.temporal
+
+      - id: non_compliant_non_opening_hours
+        title: "Non-Compliance Outside Opening Hours"
+        width: full
+        height: 350px
+        analytics_requirements:
+          analytics_tags:
+            - compliance.temporal
+
+  - section_id: recommendations
+    type: recommendations
+    title: "Recommended Actions"
+    # Analytics requirements for this section
+    analytics_requirements:
+      analytics_tags:
+        - recommendations.operational
+        - recommendations.hvac
+        - recommendations.ventilation
+      custom_requirements:
+        include_weather_correlation: true
+        include_cost_estimates: true
+    max_recommendations: 15
+    group_by: priority
+    include_evidence: true
+    include_weather_correlation: true
+    include_cost_estimates: true
+
+  - section_id: room_details
+    type: loop
+    title: "Room-by-Room Analysis"
+    # Analytics requirements for this section
+    analytics_requirements:
+      analytics_tags:
+        - spatial.room_level
+        - statistics.basic
+        - compliance.overall
+    loop_over: rooms
+    max_iterations: 20
+    sort_by: compliance_rate
+    sort_order: ascending
+    subsections:
+      - section_id: room_header
+        type: text
+        content: "## {room_name}"
+
+      - section_id: room_summary
+        type: summary
+        content:
+          - room_metrics
+          - compliance_rate
+          - critical_issues
+
+      - section_id: room_charts
+        type: charts
+        charts:
+          - id: room_temperature_co2
+            title: "Room Trends"
+            width: full
+
+      - section_id: room_recommendations
+        type: recommendations
+        max_recommendations: 3
+
+style:
+  primary_color: "#1976D2"
+  secondary_color: "#388E3C"
+  warning_color: "#F57C00"
+  critical_color: "#D32F2F"
+  text_color: "#212121"
+  background_color: "#FAFAFA"

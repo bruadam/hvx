@@ -1,28 +1,6 @@
 """
-IEQ Analytics Engine
-
-A comprehensive analytics engine for Indoor Environmental Quality (IEQ) assessment
-using IoT indoor climate sensors data.
+hvx - A comprehensive analytics engine for Indoor Environmental Quality (IEQ) assessment and energy efficiency.
 """
 
 __version__ = "0.1.0"
 __author__ = "Bruno Adam"
-
-# Core analytics
-from src.core.analytics.ieq import AnalysisEngine
-
-# Services
-from src.core.services import (
-    GraphService,
-    TemplateService,
-    AnalyticsService,
-    ReportService
-)
-
-__all__ = [
-    "AnalysisEngine",
-    "GraphService",
-    "TemplateService",
-    "AnalyticsService",
-    "ReportService",
-]

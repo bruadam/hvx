@@ -19,7 +19,13 @@ import pandas as pd
 from dataclasses import dataclass
 
 from src.core.models import BuildingDataset
-from src.core.models.results.hierarchical_results import HierarchicalAnalysisResult
+# Use analysis_results instead of hierarchical_results
+try:
+    from src.core.models.results.analysis_results import AnalysisResults as HierarchicalAnalysisResult
+except ImportError:
+    # Fallback for type annotations
+    HierarchicalAnalysisResult = Any
+
 from src.core.analytics.ieq.RecommendationEngine import (
     RecommendationEngine,
     RecommendationResult

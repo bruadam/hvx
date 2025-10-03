@@ -19,8 +19,8 @@ import pandas as pd
 import numpy as np
 from dataclasses import dataclass
 
-from src.core.models import BuildingDataset, RoomData
-from src.core.models.results.room_analysis import RoomAnalysisResult
+from src.core.models import BuildingDataset, Room
+from src.core.models.results.room_analysis import RoomAnalysis
 
 # Import recommendation analyzers
 from src.core.analytics.ieq.library.recommendations import (
@@ -79,8 +79,8 @@ class RecommendationEngine:
 
     def generate_recommendations_for_room(
         self,
-        room_data: RoomData,
-        room_analysis: RoomAnalysisResult,
+        room_data: Room,
+        room_analysis: RoomAnalysis,
         weather_data: Optional[pd.DataFrame] = None,
         auto_run_prerequisites: bool = True
     ) -> List[RecommendationResult]:
@@ -140,7 +140,7 @@ class RecommendationEngine:
 
         return recommendations
 
-    def _has_temperature_issues(self, room_analysis: RoomAnalysisResult) -> bool:
+    def _has_temperature_issues(self, room_analysis: RoomAnalysis) -> bool:
         """Check if room has temperature compliance issues."""
         # Check test results for temperature violations
         if not room_analysis.test_results:
@@ -154,7 +154,7 @@ class RecommendationEngine:
 
         return False
 
-    def _has_air_quality_issues(self, room_analysis: RoomAnalysisResult) -> bool:
+    def _has_air_quality_issues(self, room_analysis: RoomAnalysis) -> bool:
         """Check if room has air quality issues."""
         if not room_analysis.test_results:
             return False
@@ -167,7 +167,7 @@ class RecommendationEngine:
 
         return False
 
-    def _check_temperature_prerequisites(self, room_analysis: RoomAnalysisResult) -> PrerequisiteCheck:
+    def _check_temperature_prerequisites(self, room_analysis: RoomAnalysis) -> PrerequisiteCheck:
         """Check if temperature analysis prerequisites are met."""
         missing_tests = []
         missing_data = []
@@ -193,7 +193,7 @@ class RecommendationEngine:
             can_auto_run=can_auto_run
         )
 
-    def _check_air_quality_prerequisites(self, room_analysis: RoomAnalysisResult) -> PrerequisiteCheck:
+    def _check_air_quality_prerequisites(self, room_analysis: RoomAnalysis) -> PrerequisiteCheck:
         """Check if air quality analysis prerequisites are met."""
         missing_tests = []
         missing_data = []
@@ -218,7 +218,7 @@ class RecommendationEngine:
             can_auto_run=can_auto_run
         )
 
-    def _run_prerequisite_tests(self, room_data: RoomData, missing_tests: List[str]):
+    def _run_prerequisite_tests(self, room_data: Room, missing_tests: List[str]):
         """
         Run missing prerequisite tests.
 
@@ -232,8 +232,8 @@ class RecommendationEngine:
 
     def _generate_temperature_recommendations(
         self,
-        room_data: RoomData,
-        room_analysis: RoomAnalysisResult,
+        room_data: Room,
+        room_analysis: RoomAnalysis,
         weather_data: Optional[pd.DataFrame]
     ) -> List[RecommendationResult]:
         """Generate temperature-related recommendations with weather correlation."""
@@ -329,7 +329,7 @@ class RecommendationEngine:
 
     def _generate_ventilation_recommendation(
         self,
-        room_analysis: RoomAnalysisResult,
+        room_analysis: RoomAnalysis,
         weather_data: Optional[pd.DataFrame]
     ) -> Optional[RecommendationResult]:
         """Generate ventilation recommendation."""
@@ -366,7 +366,7 @@ class RecommendationEngine:
 
     def _generate_hvac_recommendation(
         self,
-        room_analysis: RoomAnalysisResult,
+        room_analysis: RoomAnalysis,
         weather_correlations: Optional[Dict[str, Any]]
     ) -> Optional[RecommendationResult]:
         """Generate HVAC system recommendation."""
@@ -401,7 +401,7 @@ class RecommendationEngine:
             weather_correlations=weather_correlations
         )
 
-    def _get_summer_temperature_compliance(self, room_analysis: RoomAnalysisResult) -> Optional[float]:
+    def _get_summer_temperature_compliance(self, room_analysis: RoomAnalysis) -> Optional[float]:
         """Extract summer temperature compliance rate."""
         if not room_analysis.test_results:
             return None
@@ -415,8 +415,8 @@ class RecommendationEngine:
 
     def _create_temperature_non_compliance_mask(
         self,
-        room_data: RoomData,
-        room_analysis: RoomAnalysisResult
+        room_data: Room,
+        room_analysis: RoomAnalysis
     ) -> Optional[pd.Series]:
         """Create boolean mask for temperature non-compliance periods."""
         # This would extract the actual non-compliance timestamps
@@ -436,22 +436,22 @@ class RecommendationEngine:
                 return correlations[param_name].get('correlation', 0.0)
         return 0.0
 
-    def _extract_co2_metrics(self, room_analysis: RoomAnalysisResult) -> Optional[Dict[str, Any]]:
+    def _extract_co2_metrics(self, room_analysis: RoomAnalysis) -> Optional[Dict[str, Any]]:
         """Extract CO2 metrics from room analysis."""
         # Placeholder - would extract from test results
         return None
 
-    def _extract_humidity_metrics(self, room_analysis: RoomAnalysisResult) -> Optional[Dict[str, Any]]:
+    def _extract_humidity_metrics(self, room_analysis: RoomAnalysis) -> Optional[Dict[str, Any]]:
         """Extract humidity metrics from room analysis."""
         # Placeholder
         return None
 
-    def _extract_temperature_control_metrics(self, room_analysis: RoomAnalysisResult) -> Optional[Dict[str, Any]]:
+    def _extract_temperature_control_metrics(self, room_analysis: RoomAnalysis) -> Optional[Dict[str, Any]]:
         """Extract temperature control metrics."""
         # Placeholder
         return None
 
-    def _extract_setpoint_deviation_metrics(self, room_analysis: RoomAnalysisResult) -> Optional[Dict[str, Any]]:
+    def _extract_setpoint_deviation_metrics(self, room_analysis: RoomAnalysis) -> Optional[Dict[str, Any]]:
         """Extract setpoint deviation metrics."""
         # Placeholder
         return None
