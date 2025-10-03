@@ -14,8 +14,8 @@ from reportlab.platypus import (
 )
 from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
 
-from src.services.graph_service import GraphService
-from src.services.template_service import TemplateService
+from src.core.services.graph_service import GraphService
+from src.core.services.template_service import TemplateService
 
 
 class ReportService:

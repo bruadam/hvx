@@ -54,18 +54,47 @@ def cli():
     pass
 
 
-# Import and register command groups
-from src.cli.commands import graphs, templates, analytics, reports, data, analyze, workflow, tests, report_templates
+# Import command groups
+from src.cli.commands import ieq, energy, settings
+from src.cli.commands.ieq.info import info as ieq_info
 
-cli.add_command(graphs.graphs)
-cli.add_command(templates.templates)
-cli.add_command(analytics.analytics)
-cli.add_command(reports.reports)
-cli.add_command(data.data)
-cli.add_command(analyze.analyze_cli)
-cli.add_command(workflow.workflow)
-cli.add_command(tests.tests)
-cli.add_command(report_templates.report_templates)
+
+# ==========================================
+# IEQ Group
+# ==========================================
+@click.group(name='ieq')
+def ieq_group():
+    """Indoor Environmental Quality analysis commands."""
+    pass
+
+
+# Add IEQ subcommands
+ieq_group.add_command(ieq.start)
+ieq_group.add_command(ieq_info)
+
+
+# ==========================================
+# Energy Group (Placeholder for future)
+# ==========================================
+@click.group(name='energy')
+def energy_group():
+    """Energy efficiency analysis commands (coming soon)."""
+    pass
+
+
+@energy_group.command(name='start')
+def energy_start():
+    """Start energy efficiency analysis (not yet implemented)."""
+    console.print("[yellow]Energy efficiency analysis is not yet implemented.[/yellow]")
+    console.print("[dim]This feature is planned for a future release.[/dim]")
+
+
+# ==========================================
+# Register top-level command groups
+# ==========================================
+cli.add_command(ieq_group, name='ieq')
+cli.add_command(energy_group, name='energy')
+cli.add_command(settings.settings)
 
 
 if __name__ == '__main__':

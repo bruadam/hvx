@@ -14,11 +14,11 @@ from datetime import datetime
 import pandas as pd
 import numpy as np
 
-from src.models.building_data import (
+from src.core.models.building_data import (
     Building, Level, Room, ClimateData, TimeSeriesData, 
     BuildingDataset, DataQuality
 )
-from src.models.enums import RoomType, IEQParameter, DEFAULT_COLUMN_MAPPINGS, ROOM_TYPE_PATTERNS
+from src.core.models.enums import RoomType, IEQParameter, DEFAULT_COLUMN_MAPPINGS, ROOM_TYPE_PATTERNS
 
 logger = logging.getLogger(__name__)
 

@@ -10,6 +10,7 @@ from typing import Optional, List, Tuple, Dict, Any
 from pathlib import Path
 from datetime import timedelta
 import pandas as pd
+import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import yaml
@@ -22,11 +23,11 @@ from rich.prompt import Prompt, Confirm
 from rich.text import Text
 from rich import box
 
-from src.models.analysis_models import (
+from src.core.models.analysis_models import (
     PortfolioAnalysis, BuildingAnalysis, LevelAnalysis, RoomAnalysis,
     TestResult, AnalysisSeverity
 )
-from src.models.building_data import BuildingDataset
+from src.core.models.building_data import BuildingDataset
 
 console = Console()
 
@@ -70,20 +71,15 @@ class AnalysisExplorer:
     
     def _load_tests_config(self):
         """Load tests configuration for filter and period definitions."""
-        config_paths = [
-            Path("config/tests.yaml"),
-            Path("../config/tests.yaml"),
-            self.analysis_dir.parent / "config" / "tests.yaml"
-        ]
+        from src.core.utils.config_loader import get_tests_config_path
         
-        for config_path in config_paths:
-            if config_path.exists():
-                try:
-                    with open(config_path, 'r') as f:
-                        self.tests_config = yaml.safe_load(f)
-                        return
-                except Exception as e:
-                    console.print(f"[yellow]Warning: Could not load tests config from {config_path}: {e}[/yellow]")
+        try:
+            config_path = get_tests_config_path()
+            with open(config_path, 'r') as f:
+                self.tests_config = yaml.safe_load(f)
+                return
+        except Exception as e:
+            console.print(f"[yellow]Warning: Could not load tests config: {e}[/yellow]")
         
         # Set empty config if not found
         self.tests_config = {'filters': {}, 'periods': {}, 'holidays': {}}
@@ -114,10 +110,6 @@ class AnalysisExplorer:
     def _show_welcome(self):
         """Display welcome message."""
         welcome = """
-[bold cyan]╔══════════════════════════════════════════════════╗[/bold cyan]
-[bold cyan]║   Interactive Analysis Explorer                 ║[/bold cyan]
-[bold cyan]╚══════════════════════════════════════════════════╝[/bold cyan]
-
 Browse hierarchical analysis results: portfolio → buildings → levels → rooms.
 
 [bold]Commands:[/bold]
@@ -227,14 +219,22 @@ Browse hierarchical analysis results: portfolio → buildings → levels → roo
             top_performers = [b for b in self.portfolio.best_performing_buildings if b['compliance_rate'] >= 90.0]
             if top_performers:
                 console.print("[bold green]🏆 Best Performing:[/bold green]")
-                for item in top_performers[:3]:
+                for item in top_performers:
                     console.print(f"   {item['building_name']}: {item['compliance_rate']:.1f}%")
         
         if self.portfolio.worst_performing_buildings:
+            # Only show buildings below 90% compliance
+            needs_attention = [b for b in self.portfolio.worst_performing_buildings if b['compliance_rate'] < 90.0]
             console.print("\n[bold red]⚠️  Needs Attention:[/bold red]")
-            for item in self.portfolio.worst_performing_buildings[:3]:
+            for item in needs_attention:
                 console.print(f"   {item['building_name']}: {item['compliance_rate']:.1f}%")
         
+        console.print()
+        
+        # Show menu options
+        console.print("[bold]Options:[/bold]")
+        console.print("  [cyan]r[/cyan]. View Smart Recommendations")
+        console.print("  [dim]q. Quit[/dim]")
         console.print()
         
         # Get user input
@@ -245,6 +245,8 @@ Browse hierarchical analysis results: portfolio → buildings → levels → roo
         
         if choice in ['q', 'quit', 'exit']:
             self._confirm_exit()
+        elif choice in ['r', 'rec', 'recommendations']:
+            self._show_portfolio_recommendations(buildings)
         elif choice in ['h', 'help']:
             self._show_help()
         elif choice.isdigit():
@@ -272,17 +274,14 @@ Browse hierarchical analysis results: portfolio → buildings → levels → roo
         """
         console.print(Panel(info.strip(), box=box.ROUNDED))
         
-        # Critical issues
-        if self.current_building.critical_issues:
-            console.print("\n[bold red]🚨 Critical Issues:[/bold red]")
-            for issue in self.current_building.critical_issues[:5]:
-                console.print(f"   • {issue}")
+        # Show pinned tests overview
+        self._show_pinned_tests_overview()
         
-        # Recommendations
-        if self.current_building.recommendations:
-            console.print("\n[bold yellow]💡 Recommendations:[/bold yellow]")
-            for rec in self.current_building.recommendations[:5]:
-                console.print(f"   • {rec}")
+        # Show categorized issues with affected rooms
+        self._show_categorized_issues()
+        
+        # Smart Recommendations (grouped by title with rooms)
+        self._show_building_smart_recommendations_summary()
         
         # Best/worst performing
         if self.current_building.best_performing_rooms:
@@ -297,7 +296,7 @@ Browse hierarchical analysis results: portfolio → buildings → levels → roo
         
         # Navigation options
         console.print("\n[bold]Navigate to:[/bold]")
-        options = ["1. View by Levels", "2. View all Rooms", "3. View Test Aggregations"]
+        options = ["1. View by Levels", "2. View all Rooms", "3. View Test Aggregations", "4. View Smart Recommendations"]
         for opt in options:
             console.print(f"  {opt}")
         
@@ -313,6 +312,8 @@ Browse hierarchical analysis results: portfolio → buildings → levels → roo
             self._rooms_list_view()
         elif choice == '3':
             self._show_test_aggregations(self.current_building.test_aggregations)
+        elif choice == '4':
+            self._show_building_recommendations()
         elif choice in ['b', 'back']:
             self._go_back()
         elif choice in ['q', 'quit']:
@@ -901,7 +902,7 @@ Browse hierarchical analysis results: portfolio → buildings → levels → roo
             room_file = rooms_dir / f"{room_id}.json"
             if room_file.exists():
                 try:
-                    from src.models.analysis_models import RoomAnalysis
+                    from src.core.models.analysis_models import RoomAnalysis
                     room = RoomAnalysis.load_from_json(room_file)
                     
                     # Check if this room has results for the selected test
@@ -1115,7 +1116,7 @@ Browse hierarchical analysis results: portfolio → buildings → levels → roo
         fig = go.Figure()
         
         # Convert week dates to strings for x-axis labels (show week start date)
-        week_labels = [f"{d.date()}" for d in heatmap_data.columns]
+        week_labels = [str(d) for d in heatmap_data.columns]
         hour_labels = [f"{h:02d}:00" for h in heatmap_data.index]
         
         # Create custom colorscale: red for non-compliant (0), green for compliant (1)
@@ -1148,13 +1149,22 @@ Browse hierarchical analysis results: portfolio → buildings → levels → roo
                 val = heatmap_data.iloc[i, j]
                 comp = compliance_data.iloc[i, j]
                 if pd.notna(val) and pd.notna(comp):
-                    status = 'Compliant' if comp >= 0.9 else 'Partial' if comp >= 0.5 else 'Non-compliant'
-                    # For CO2, divide by 1000 for display
-                    if 'CO2' in parameter.upper():
-                        val_display = f"{val/1000:.1f}k"
+                    if isinstance(comp, (int, float)):
+                        status = 'Compliant' if comp >= 0.9 else 'Partial' if comp >= 0.5 else 'Non-compliant'
                     else:
+                        status = 'Unknown'
+                    # For CO2, divide by 1000 for display
+                    if 'CO2' in parameter.upper() and isinstance(val, (int, float)):
+                        val_display = f"{val/1000:.1f}k"
+                    elif isinstance(val, (int, float)):
                         val_display = f"{val:.1f}"
-                    row_hover.append(f"Week: {week_labels[j]}<br>Hour: {hour_labels[i]}<br>Avg {parameter}: {val_display}<br>Compliance: {comp*100:.0f}%<br>Status: {status}")
+                    else:
+                        val_display = str(val)
+                    if isinstance(comp, (int, float)):
+                        compliance_str = f"{comp*100:.0f}%"
+                    else:
+                        compliance_str = str(comp)
+                    row_hover.append(f"Week: {week_labels[j]}<br>Hour: {hour_labels[i]}<br>Avg {parameter}: {val_display}<br>Compliance: {compliance_str}<br>Status: {status}")
                 else:
                     row_hover.append(f"Week: {week_labels[j]}<br>Hour: {hour_labels[i]}<br>No data")
             hover_text.append(row_hover)
@@ -1545,6 +1555,840 @@ Browse hierarchical analysis results: portfolio → buildings → levels → roo
             non_compliant_periods.append((start_time, index[-1]))
         
         return non_compliant_periods
+    
+    def _show_portfolio_recommendations(self, buildings: List[BuildingAnalysis]):
+        """Show smart recommendations at portfolio level."""
+        from src.core.services.smart_recommendations_service import generate_building_recommendations_report
+        from src.core.models.analysis_models import RoomAnalysis
+        
+        console.print("\n[bold cyan]═══ Smart Recommendations Report ═══[/bold cyan]\n")
+        console.print("[dim]Generating recommendations... (analyzing all rooms)[/dim]\n")
+        
+        # Load all room analyses
+        room_analyses = {}
+        rooms_dir = self.analysis_dir / 'rooms'
+        
+        if not rooms_dir.exists():
+            console.print(f"[red]Error: Rooms directory not found: {rooms_dir}[/red]")
+            Prompt.ask("[bold]Press Enter to continue[/bold]", default="")
+            return
+        
+        for room_file in rooms_dir.glob('*.json'):
+            try:
+                room_analysis = RoomAnalysis.load_from_json(room_file)
+                room_analyses[room_analysis.room_id] = room_analysis
+            except Exception as e:
+                console.print(f"[dim]Warning: Could not load {room_file.name}[/dim]")
+        
+        if not room_analyses:
+            console.print("[red]No room analyses found[/red]")
+            Prompt.ask("[bold]Press Enter to continue[/bold]", default="")
+            return
+        
+        # Generate report
+        report = generate_building_recommendations_report(room_analyses)
+        
+        # Display summary
+        summary = report['summary']
+        table = Table(box=box.ROUNDED, title="Executive Summary", show_header=False)
+        table.add_column("Metric", style="cyan")
+        table.add_column("Value", style="white", justify="right")
+        
+        table.add_row("Total Rooms", str(summary['total_rooms_analyzed']))
+        table.add_row("Rooms with Recommendations", str(summary['rooms_with_recommendations']))
+        table.add_row("Total Recommendations", str(summary['total_recommendations']))
+        table.add_row("", "")
+        table.add_row("[red]Critical Priority[/red]", f"[red]{summary['priority_breakdown']['critical']}[/red]")
+        table.add_row("[yellow]High Priority[/yellow]", f"[yellow]{summary['priority_breakdown']['high']}[/yellow]")
+        table.add_row("[cyan]Medium Priority[/cyan]", f"[cyan]{summary['priority_breakdown']['medium']}[/cyan]")
+        table.add_row("[green]Low Priority[/green]", f"[green]{summary['priority_breakdown']['low']}[/green]")
+        
+        console.print(table)
+        
+        # Key findings
+        console.print("\n[bold]Key Findings:[/bold]\n")
+        console.print(f"  🌞 {summary['rooms_needing_solar_shading']} rooms need solar shading")
+        console.print(f"  🏠 {summary['rooms_needing_insulation']} rooms need insulation improvements")
+        console.print(f"  💨 {summary['rooms_needing_mechanical_ventilation']} rooms need mechanical ventilation")
+        console.print(f"  ⚠️  {summary['rooms_with_ventilation_conflicts']} rooms have ventilation conflicts")
+        
+        # Group recommendations by title and show affected rooms
+        self._display_recommendations_by_type(report, room_analyses, show_all=False)
+        
+        console.print("\n[dim]Tip: Select a building to see building-specific recommendations[/dim]")
+        Prompt.ask("\n[bold]Press Enter to continue[/bold]", default="")
+    
+    def _show_building_recommendations(self):
+        """Show smart recommendations for current building."""
+        if not self.current_building:
+            console.print("[red]No building selected[/red]")
+            return
+        
+        from src.core.services.smart_recommendations_service import generate_building_recommendations_report
+        from src.core.models.analysis_models import RoomAnalysis
+        
+        console.print(f"\n[bold cyan]═══ Smart Recommendations: {self.current_building.building_name} ═══[/bold cyan]\n")
+        console.print("[dim]Generating recommendations...[/dim]\n")
+        
+        # Load room analyses for this building only
+        room_analyses = {}
+        rooms_dir = self.analysis_dir / 'rooms'
+        
+        if not rooms_dir.exists():
+            console.print(f"[red]Error: Rooms directory not found: {rooms_dir}[/red]")
+            Prompt.ask("[bold]Press Enter to continue[/bold]", default="")
+            return
+        
+        # Filter rooms for this building
+        for room_id in self.current_building.room_ids:
+            room_file = rooms_dir / f"{room_id}.json"
+            if room_file.exists():
+                try:
+                    room_analysis = RoomAnalysis.load_from_json(room_file)
+                    room_analyses[room_analysis.room_id] = room_analysis
+                except Exception as e:
+                    console.print(f"[dim]Warning: Could not load {room_file.name}[/dim]")
+        
+        if not room_analyses:
+            console.print("[red]No room analyses found for this building[/red]")
+            Prompt.ask("[bold]Press Enter to continue[/bold]", default="")
+            return
+        
+        # Generate report
+        report = generate_building_recommendations_report(room_analyses)
+        
+        # Display summary for this building
+        summary = report['summary']
+        console.print(f"[bold]Building:[/bold] {self.current_building.building_name}")
+        console.print(f"[bold]Rooms Analyzed:[/bold] {summary['total_rooms_analyzed']}")
+        console.print(f"[bold]Recommendations:[/bold] {summary['total_recommendations']}\n")
+        
+        # Show recommendations by type
+        by_type = report.get('by_recommendation_type', {})
+        
+        type_names = {
+            'solar_shading': '🌞 Solar Shading',
+            'insulation': '🏠 Insulation',
+            'mechanical_ventilation': '💨 Mechanical Ventilation',
+            'natural_ventilation': '🌬️  Natural Ventilation'
+        }
+        
+        for type_key in ['solar_shading', 'insulation', 'mechanical_ventilation', 'natural_ventilation']:
+            count = by_type.get(type_key, 0)
+            if count > 0:
+                console.print(f"  {type_names.get(type_key, type_key)}: [yellow]{count} rooms[/yellow]")
+        
+        # Display recommendations grouped by title with affected rooms
+        self._display_recommendations_by_type(report, room_analyses, show_all=True)
+        
+        # Add interactive navigation
+        console.print("\n[bold]Actions:[/bold]")
+        console.print("  1. Evaluate Solar Shading Impact")
+        console.print("  2. Evaluate Insulation Impact")
+        console.print("  3. Evaluate Ventilation Impact")
+        console.print("  b. Back")
+        console.print()
+        
+        choice = Prompt.ask("[bold]Your choice[/bold]", default="b").strip().lower()
+        
+        if choice == '1':
+            self._evaluate_solar_shading_impact(report, room_analyses)
+            self._show_building_recommendations()  # Return to recommendations view
+        elif choice == '2':
+            self._evaluate_insulation_impact(report, room_analyses)
+            self._show_building_recommendations()
+        elif choice == '3':
+            self._evaluate_ventilation_impact(report, room_analyses)
+            self._show_building_recommendations()
+        elif choice in ['b', 'back']:
+            return
+    
+    def _display_recommendations_by_type(self, report: dict, room_analyses: dict, show_all: bool = True):
+        """Display recommendations grouped by type and title, showing affected rooms.
+        
+        Args:
+            report: Smart recommendations report
+            room_analyses: Dictionary of room analyses
+            show_all: If True, show all recommendations. If False, show only critical.
+        """
+        from collections import defaultdict
+        
+        room_recs = report.get('room_recommendations', {})
+        
+        # Group recommendations by title and collect affected rooms
+        def _rec_factory():
+            return {
+                'rooms': [],
+                'type': None,
+                'priority': None,  # Should be a string
+                'description': None,
+                'evidence': []
+            }
+
+        rec_by_title = defaultdict(_rec_factory)
+        
+        for room_id, recs in room_recs.items():
+            room = room_analyses.get(room_id)
+            room_name = room.room_name if room else room_id
+            
+            for rec in recs:
+                # Only show critical if show_all is False
+                if not show_all and rec.priority.value != 'critical':
+                    continue
+                
+                title = rec.title
+                if not title:
+                    continue
+
+                # Ensure title is a string
+                if not isinstance(title, str):
+                    try:
+                        title = str(title)
+                    except Exception:
+                        continue
+
+                entry = rec_by_title[title]
+
+                # Append room name (avoid duplicates)
+                if room_name not in entry['rooms']:
+                    entry['rooms'].append(room_name)
+
+                # Set scalar fields if not set, or keep the first encountered value
+                if entry['type'] is None and getattr(rec, 'type', None) is not None:
+                    entry['type'] = getattr(rec.type, 'value', rec.type)
+                if entry['priority'] is None and getattr(rec, 'priority', None) is not None:
+                    entry['priority'] = getattr(rec.priority, 'value', rec.priority)
+                if entry['description'] is None and getattr(rec, 'description', None):
+                    entry['description'] = rec.description
+
+                # Normalize and append evidence (could be dict or list)
+                if getattr(rec, 'evidence', None):
+                    ev = rec.evidence
+                    if isinstance(ev, list):
+                        for e in ev:
+                            if isinstance(e, dict):
+                                entry['evidence'].append(e)
+                            else:
+                                entry['evidence'].append({'note': str(e)})
+                    elif isinstance(ev, dict):
+                        entry['evidence'].append(ev)
+                    else:
+                        entry['evidence'].append({'note': str(ev)})
+        
+        if not rec_by_title:
+            if show_all:
+                console.print("\n[green]✓ No recommendations needed - all rooms performing well![/green]")
+            else:
+                console.print("\n[green]✓ No critical recommendations![/green]")
+            return
+        
+        # Display by recommendation type
+        type_names = {
+            'solar_shading': '🌞 Solar Shading',
+            'insulation': '🏠 Insulation',
+            'mechanical_ventilation': '💨 Mechanical Ventilation',
+            'natural_ventilation': '🌬️  Natural Ventilation',
+            'hvac_control': '🌡️  HVAC Control',
+            'operational': '⚙️  Operational'
+        }
+        
+        priority_colors = {
+            'critical': 'red',
+            'high': 'yellow',
+            'medium': 'cyan',
+            'low': 'green'
+        }
+        
+        # Group by type
+        by_type = defaultdict(list)
+        for title, data in rec_by_title.items():
+            by_type[data['type']].append((title, data))
+        
+        if show_all:
+            console.print("\n[bold cyan]═══ RECOMMENDATIONS BY TYPE ═══[/bold cyan]\n")
+        else:
+            console.print("\n[bold red]═══ CRITICAL RECOMMENDATIONS ═══[/bold red]\n")
+        
+        for type_key in ['solar_shading', 'insulation', 'mechanical_ventilation', 'natural_ventilation', 'hvac_control', 'operational']:
+            if type_key not in by_type:
+                continue
+            
+            items = by_type[type_key]
+            console.print(f"\n[bold]{type_names.get(type_key, type_key)}[/bold] ({len(items)} recommendations)")
+            console.print("─" * 80)
+            
+            # Sort by priority (critical first)
+            priority_order = {'critical': 0, 'high': 1, 'medium': 2, 'low': 3}
+            items.sort(key=lambda x: priority_order.get(x[1]['priority'], 4))
+            
+            for title, data in items:
+                priority = data['priority']
+                priority_color = priority_colors.get(priority, 'white')
+                room_count = len(data['rooms'])
+                
+                console.print(f"\n[{priority_color}]●[/{priority_color}] [{priority_color}]{priority.upper()}[/{priority_color}] - {title}")
+                console.print(f"   [dim]{data['description']}[/dim]")
+                
+                # Show affected rooms
+                console.print(f"\n   [bold]Affected Rooms ({room_count}):[/bold]")
+                if room_count <= 5:
+                    for room in data['rooms']:
+                        console.print(f"     • {room}")
+                else:
+                    for room in data['rooms'][:3]:
+                        console.print(f"     • {room}")
+                    console.print(f"     [dim]... and {room_count - 3} more rooms[/dim]")
+                
+                # Show aggregated evidence (if available)
+                if data['evidence'] and show_all:
+                    evidence_summary = self._aggregate_evidence(data['evidence'])
+                    if evidence_summary:
+                        console.print(f"\n   [dim]Evidence: {evidence_summary}[/dim]")
+                
+                console.print()
+    
+    def _aggregate_evidence(self, evidence_list: list) -> str:
+        """Aggregate evidence from multiple rooms."""
+        if not evidence_list:
+            return ""
+        
+        # Collect common evidence keys
+        all_keys = set()
+        for ev in evidence_list:
+            all_keys.update(ev.keys())
+        
+        summary_parts = []
+        
+        # Average numeric values
+        if 'worst_summer_compliance' in all_keys:
+            values = [e.get('worst_summer_compliance', 0) for e in evidence_list if 'worst_summer_compliance' in e]
+            if values:
+                avg = sum(values) / len(values)
+                min_val = min(values)
+                summary_parts.append(f"Summer compliance: {min_val:.0f}%-{avg:.0f}% avg")
+        
+        if 'worst_cold_compliance' in all_keys:
+            values = [e.get('worst_cold_compliance', 0) for e in evidence_list if 'worst_cold_compliance' in e]
+            if values:
+                avg = sum(values) / len(values)
+                min_val = min(values)
+                summary_parts.append(f"Winter compliance: {min_val:.0f}%-{avg:.0f}% avg")
+        
+        if 'worst_co2_compliance' in all_keys:
+            values = [e.get('worst_co2_compliance', 0) for e in evidence_list if 'worst_co2_compliance' in e]
+            if values:
+                avg = sum(values) / len(values)
+                min_val = min(values)
+                summary_parts.append(f"CO2 compliance: {min_val:.0f}%-{avg:.0f}% avg")
+        
+        if 'outdoor_temp_correlation' in all_keys:
+            values = [e.get('outdoor_temp_correlation', 0) for e in evidence_list if 'outdoor_temp_correlation' in e and e.get('outdoor_temp_correlation', 0) != 0]
+            if values:
+                avg = sum(values) / len(values)
+                summary_parts.append(f"Temp correlation: {avg:+.2f}")
+        
+        if 'radiation_correlation' in all_keys:
+            values = [e.get('radiation_correlation', 0) for e in evidence_list if 'radiation_correlation' in e and e.get('radiation_correlation', 0) > 0]
+            if values:
+                avg = sum(values) / len(values)
+                summary_parts.append(f"Solar correlation: {avg:+.2f}")
+        
+        return ", ".join(summary_parts)
+    
+    def _show_pinned_tests_overview(self):
+        """Show overview of pinned key tests for the building."""
+        if not self.current_building or not self.current_building.test_aggregations:
+            return
+        
+        # Pinned tests to show in building overview
+        pinned_tests = [
+            'co2_1000_all_year_opening',
+            'co2_2000_all_year_opening',
+            'temp_below_20_all_year_opening',
+            'temp_above_26_all_year_opening',
+            'temp_above_27_all_year_opening'
+        ]
+        
+        # Filter to only pinned tests that exist
+        available_tests = {}
+        for test_name in pinned_tests:
+            if test_name in self.current_building.test_aggregations:
+                available_tests[test_name] = self.current_building.test_aggregations[test_name]
+        
+        if not available_tests:
+            return
+        
+        console.print("\n[bold cyan]📊 Key Performance Indicators:[/bold cyan]")
+        
+        # Create a compact table
+        table = Table(box=box.SIMPLE, show_header=True, show_edge=False)
+        table.add_column("Test", style="cyan", width=30)
+        table.add_column("Compliance", justify="right", style="white", width=12)
+        table.add_column("Status", style="white", width=15)
+        
+        # Test display names
+        test_names = {
+            'co2_1000_all_year_opening': 'CO₂ < 1000 ppm',
+            'co2_2000_all_year_opening': 'CO₂ < 2000 ppm',
+            'temp_below_20_all_year_opening': 'Temp ≥ 20°C',
+            'temp_above_26_all_year_opening': 'Temp ≤ 26°C',
+            'temp_above_27_all_year_opening': 'Temp ≤ 27°C'
+        }
+        
+        for test_name in pinned_tests:
+            if test_name not in available_tests:
+                continue
+            
+            test_data = available_tests[test_name]
+            avg_compliance = test_data.get('avg_compliance_rate', test_data.get('average_compliance', 0))
+            
+            # Determine status and color
+            if avg_compliance >= 90:
+                status = "[green]✓ Excellent[/green]"
+            elif avg_compliance >= 75:
+                status = "[cyan]◐ Good[/cyan]"
+            elif avg_compliance >= 50:
+                status = "[yellow]◔ Fair[/yellow]"
+            else:
+                status = "[red]✗ Poor[/red]"
+            
+            display_name = test_names.get(test_name, test_name)
+            table.add_row(display_name, f"{avg_compliance:.1f}%", status)
+        
+        console.print(table)
+    
+    def _show_categorized_issues(self):
+        """Show issues categorized by severity and type with affected rooms."""
+        if not self.current_building:
+            return
+        
+        # Load all room analyses for the building
+        rooms_dir = self.analysis_dir / 'rooms'
+        if not rooms_dir.exists():
+            return
+        
+        room_analyses = []
+        for room_id in self.current_building.room_ids:
+            room_file = rooms_dir / f"{room_id}.json"
+            if room_file.exists():
+                try:
+                    room_analysis = RoomAnalysis.load_from_json(room_file)
+                    room_analyses.append(room_analysis)
+                except Exception as e:
+                    console.print(f"[dim]Warning: Could not load {room_file.name}: {e}[/dim]")
+        
+        if not room_analyses:
+            return
+        
+        # Categorize issues by severity and parameter type
+        # Structure: {severity: {parameter: {test_name: [room_names]}}}
+        issues_by_severity = {
+            'critical': {},
+            'moderate': {},
+            'low': {}
+        }
+        
+        # Process each room's test results
+        for room in room_analyses:
+            for test_name, test_result in room.test_results.items():
+                compliance = test_result.compliance_rate
+                parameter = test_result.parameter.upper()
+                
+                # Determine severity based on compliance rate
+                if compliance < 50:
+                    severity = 'critical'
+                elif compliance < 75:
+                    severity = 'moderate'
+                elif compliance < 90:
+                    severity = 'low'
+                else:
+                    continue  # Skip if compliance is good
+                
+                # Initialize nested dictionaries if needed
+                if parameter not in issues_by_severity[severity]:
+                    issues_by_severity[severity][parameter] = {}
+                
+                if test_name not in issues_by_severity[severity][parameter]:
+                    issues_by_severity[severity][parameter][test_name] = {
+                        'rooms': [],
+                        'description': test_result.description or test_name,
+                        'avg_compliance': []
+                    }
+                
+                # Add room to the issue
+                issues_by_severity[severity][parameter][test_name]['rooms'].append(room.room_name)
+                issues_by_severity[severity][parameter][test_name]['avg_compliance'].append(compliance)
+        
+        # Display issues by severity
+        severity_config = {
+            'critical': {
+                'emoji': '🚨',
+                'title': 'Critical Issues',
+                'color': 'bold red'
+            },
+            'moderate': {
+                'emoji': '⚠️',
+                'title': 'Moderate Issues',
+                'color': 'bold yellow'
+            },
+            'low': {
+                'emoji': 'ℹ️',
+                'title': 'Low Priority Issues',
+                'color': 'bold blue'
+            }
+        }
+        
+        for severity in ['critical', 'moderate', 'low']:
+            if not issues_by_severity[severity]:
+                continue
+            
+            config = severity_config[severity]
+            console.print(f"\n[{config['color']}]{config['emoji']} {config['title']}:[/{config['color']}]")
+            
+            # Group by parameter type (Temperature, CO2, etc.)
+            for parameter, tests in sorted(issues_by_severity[severity].items()):
+                console.print(f"\n  [{config['color'].split()[1]}]• {parameter}:[/{config['color'].split()[1]}]")
+                
+                # Show each test with affected rooms
+                for test_name, data in tests.items():
+                    rooms = data['rooms']
+                    avg_comp = sum(data['avg_compliance']) / len(data['avg_compliance'])
+                    description = data['description']
+                    
+                    # Show test description and average compliance
+                    console.print(f"    [dim]{description}[/dim]")
+                    console.print(f"    [dim]Average compliance: {avg_comp:.1f}%[/dim]")
+                    
+                    # Show affected rooms (limit to first 10, then show count)
+                    if len(rooms) <= 10:
+                        room_list = ", ".join(rooms)
+                        console.print(f"    Rooms: {room_list}")
+                    else:
+                        room_list = ", ".join(rooms[:10])
+                        console.print(f"    Rooms: {room_list} ... and {len(rooms) - 10} more")
+                    console.print()
+    
+    def _show_building_smart_recommendations_summary(self):
+        """Show smart recommendations summary for the building (grouped by title with rooms)."""
+        if not self.current_building:
+            return
+        
+        from src.core.services.smart_recommendations_service import generate_building_recommendations_report
+        from src.core.models.analysis_models import RoomAnalysis
+        
+        # Load room analyses for this building
+        room_analyses = {}
+        rooms_dir = self.analysis_dir / 'rooms'
+        
+        if not rooms_dir.exists():
+            return
+        
+        # Filter rooms for this building
+        for room_id in self.current_building.room_ids:
+            room_file = rooms_dir / f"{room_id}.json"
+            if room_file.exists():
+                try:
+                    room_analysis = RoomAnalysis.load_from_json(room_file)
+                    room_analyses[room_analysis.room_id] = room_analysis
+                except Exception:
+                    continue
+        
+        if not room_analyses:
+            return
+        
+        # Generate report
+        report = generate_building_recommendations_report(room_analyses)
+        room_recs = report.get('room_recommendations', {})
+        
+        if not room_recs:
+            return
+        
+        # Group recommendations by title
+        recs_by_title = {}
+        for room_id, recs in room_recs.items():
+            room = room_analyses.get(room_id)
+            room_name = room.room_name if room else room_id
+            
+            for rec in recs:
+                title = rec.title
+                if title not in recs_by_title:
+                    recs_by_title[title] = {
+                        'priority': rec.priority.value,
+                        'type': rec.type.value,
+                        'rooms': [],
+                        'description': rec.description
+                    }
+                recs_by_title[title]['rooms'].append(room_name)
+        
+        # Sort by priority
+        priority_order = {'critical': 0, 'high': 1, 'medium': 2, 'low': 3}
+        sorted_recs = sorted(
+            recs_by_title.items(),
+            key=lambda x: (priority_order.get(x[1]['priority'], 4), x[0])
+        )
+        
+        # Show only top 5 recommendations
+        console.print("\n[bold yellow]🎯 Smart Recommendations:[/bold yellow]")
+        
+        shown = 0
+        for title, data in sorted_recs:
+            if shown >= 5:
+                break
+            
+            priority = data['priority']
+            rooms = data['rooms']
+            
+            # Priority indicator
+            priority_colors = {
+                'critical': 'red',
+                'high': 'yellow',
+                'medium': 'cyan',
+                'low': 'green'
+            }
+            color = priority_colors.get(priority, 'white')
+            
+            # Show recommendation
+            console.print(f"\n  [{color}]•[/{color}] [bold]{title}[/bold] [{color}]({priority.upper()})[/{color}]")
+            
+            # Show rooms (max 3, then count)
+            if len(rooms) <= 3:
+                console.print(f"    [dim]Rooms: {', '.join(rooms)}[/dim]")
+            else:
+                console.print(f"    [dim]Rooms: {', '.join(rooms[:3])} +{len(rooms)-3} more[/dim]")
+            
+            shown += 1
+        
+        if len(sorted_recs) > 5:
+            console.print(f"\n  [dim]... and {len(sorted_recs) - 5} more recommendations (view option 4 for details)[/dim]")
+    
+    def _evaluate_solar_shading_impact(self, report: dict, room_analyses: dict):
+        """Evaluate the impact of implementing solar shading recommendations."""
+        console.clear()
+        console.print("\n[bold cyan]═══ Solar Shading Impact Evaluation ═══[/bold cyan]\n")
+        
+        # Find rooms with solar shading recommendations
+        room_recs = report.get('room_recommendations', {})
+        solar_shading_rooms = []
+        
+        for room_id, recs in room_recs.items():
+            for rec in recs:
+                if rec.type.value == 'solar_shading':
+                    room = room_analyses.get(room_id)
+                    if room:
+                        solar_shading_rooms.append({
+                            'room': room,
+                            'recommendation': rec
+                        })
+                    break
+        
+        if not solar_shading_rooms:
+            console.print("[yellow]No solar shading recommendations found for this building.[/yellow]")
+            Prompt.ask("\n[bold]Press Enter to continue[/bold]", default="")
+            return
+        
+        console.print(f"[bold]Rooms with Solar Shading Recommendations:[/bold] {len(solar_shading_rooms)}")
+        if self.current_building is not None:
+            console.print(f"[bold]Building:[/bold] {self.current_building.building_name}\n")
+
+        # Calculate current performance metrics
+        if not self.current_building:
+            console.print("[red]No building selected[/red]")
+            return
+        total_rooms_in_building = len(self.current_building.room_ids)
+        
+        # Aggregate current issues
+        current_overheating_issues = []
+        current_summer_compliance = []
+        potential_improvements = []
+        
+        for item in solar_shading_rooms:
+            room = item['room']
+            rec = item['recommendation']
+            
+            # Extract current performance from evidence
+            evidence = rec.evidence
+            worst_summer = evidence.get('worst_summer_compliance', 0)
+            radiation_corr = evidence.get('radiation_correlation', 0)
+            
+            current_summer_compliance.append(worst_summer)
+            
+            # Estimate improvement potential based on correlation strength
+            if radiation_corr > 0.5:
+                # Strong solar correlation - high improvement potential
+                estimated_improvement = 25  # percentage points
+            elif radiation_corr > 0.3:
+                # Moderate correlation
+                estimated_improvement = 15
+            else:
+                # Weak but present
+                estimated_improvement = 10
+            
+            potential_improvements.append({
+                'room_name': room.room_name,
+                'current_compliance': worst_summer,
+                'estimated_new_compliance': min(100, worst_summer + estimated_improvement),
+                'improvement': estimated_improvement,
+                'priority': rec.priority.value,
+                'correlation': radiation_corr
+            })
+        
+        # Display room-level impact
+        console.print("[bold cyan]📊 Room-Level Impact:[/bold cyan]\n")
+        
+        table = Table(box=box.ROUNDED, show_header=True)
+        table.add_column("Room", style="cyan", width=25)
+        table.add_column("Current", justify="right", style="yellow")
+        table.add_column("Estimated", justify="right", style="green")
+        table.add_column("Improvement", justify="right", style="white")
+        table.add_column("Priority", style="white")
+        
+        potential_improvements.sort(key=lambda x: x['improvement'], reverse=True)
+        
+        for item in potential_improvements[:10]:  # Show top 10
+            improvement_str = f"+{item['improvement']}%"
+            priority_emoji = {'critical': '🚨', 'high': '⚠️', 'medium': '💡', 'low': 'ℹ️'}
+            emoji = priority_emoji.get(item['priority'], '•')
+            
+            table.add_row(
+                item['room_name'][:25],
+                f"{item['current_compliance']:.1f}%",
+                f"{item['estimated_new_compliance']:.1f}%",
+                improvement_str,
+                f"{emoji} {item['priority']}"
+            )
+        
+        console.print(table)
+        
+        if len(potential_improvements) > 10:
+            console.print(f"\n[dim]... and {len(potential_improvements) - 10} more rooms[/dim]")
+        
+        # Calculate building-level impact
+        console.print("\n[bold cyan]🏢 Building-Level Impact:[/bold cyan]\n")
+        
+        avg_current_compliance = sum(p['current_compliance'] for p in potential_improvements) / len(potential_improvements)
+        avg_estimated_compliance = sum(p['estimated_new_compliance'] for p in potential_improvements) / len(potential_improvements)
+        avg_improvement = avg_estimated_compliance - avg_current_compliance
+        
+        # Estimate impact on overall building compliance
+        # Affected rooms improve, others stay the same
+        affected_room_count = len(solar_shading_rooms)
+        
+        # Get current building average compliance from test aggregations
+        building_temp_tests = [
+            'temp_above_26_all_year_opening',
+            'temp_above_27_all_year_opening'
+        ]
+        
+        current_building_compliance = []
+        for test_name in building_temp_tests:
+            if test_name in self.current_building.test_aggregations:
+                test_data = self.current_building.test_aggregations[test_name]
+                compliance = test_data.get('avg_compliance_rate', test_data.get('average_compliance', 0))
+                current_building_compliance.append(compliance)
+        
+        if current_building_compliance:
+            avg_building_compliance = sum(current_building_compliance) / len(current_building_compliance)
+        else:
+            avg_building_compliance = self.current_building.avg_compliance_rate
+        
+        # Weighted improvement: (affected_rooms * improvement) / total_rooms
+        weighted_improvement = (affected_room_count * avg_improvement) / total_rooms_in_building
+        estimated_new_building_compliance = avg_building_compliance + weighted_improvement
+        
+        info_panel = f"""
+[bold]Current Building Performance:[/bold]
+  • Average Compliance (Temperature): {avg_building_compliance:.1f}%
+  • Rooms Affected by Solar Gain: {affected_room_count}/{total_rooms_in_building}
+  • Current Avg Compliance (Affected Rooms): {avg_current_compliance:.1f}%
+
+[bold]Estimated After Solar Shading Implementation:[/bold]
+  • New Building Compliance: [green]{estimated_new_building_compliance:.1f}%[/green]
+  • Building-Level Improvement: [green]+{weighted_improvement:.1f}%[/green]
+  • Avg Improvement (Affected Rooms): [green]+{avg_improvement:.1f}%[/green]
+
+[bold]Cost-Benefit Analysis:[/bold]
+  • Implementation Complexity: [yellow]Medium[/yellow]
+  • Estimated ROI: [green]High[/green] (reduces cooling costs, improves comfort)
+  • Payback Period: [cyan]2-4 years[/cyan]
+  • Co-benefits: Reduced glare, lower cooling energy consumption
+        """
+        
+        console.print(Panel(info_panel.strip(), title="Impact Summary", box=box.DOUBLE))
+        
+        # Recommendation summary
+        console.print("\n[bold yellow]💡 Implementation Recommendations:[/bold yellow]")
+        console.print("  1. Prioritize rooms with correlation > 0.5 (strongest solar impact)")
+        console.print("  2. Consider automated solar shading for optimal performance")
+        console.print("  3. Install on south, east, and west-facing windows first")
+        console.print("  4. Monitor indoor temperature reduction after installation")
+        console.print("  5. Combine with natural ventilation strategies for best results")
+        
+        Prompt.ask("\n[bold]Press Enter to continue[/bold]", default="")
+    
+    def _evaluate_insulation_impact(self, report: dict, room_analyses: dict):
+        """Evaluate the impact of implementing insulation improvements."""
+        console.clear()
+        console.print("\n[bold cyan]═══ Insulation Impact Evaluation ═══[/bold cyan]\n")
+        
+        room_recs = report.get('room_recommendations', {})
+        insulation_rooms = []
+        
+        for room_id, recs in room_recs.items():
+            for rec in recs:
+                if rec.type.value == 'insulation':
+                    room = room_analyses.get(room_id)
+                    if room:
+                        insulation_rooms.append({
+                            'room': room,
+                            'recommendation': rec
+                        })
+                    break
+        
+        if not insulation_rooms:
+            console.print("[yellow]No insulation recommendations found for this building.[/yellow]")
+            Prompt.ask("\n[bold]Press Enter to continue[/bold]", default="")
+            return
+        
+        console.print(f"[bold]Rooms with Insulation Recommendations:[/bold] {len(insulation_rooms)}")
+        if self.current_building is not None:
+            console.print(f"[bold]Building:[/bold] {self.current_building.building_name}\n")
+        console.print("[dim]Impact evaluation for insulation improvements...[/dim]")
+        console.print("[dim]This feature analyzes winter temperature compliance and outdoor correlation.[/dim]\n")
+        
+        Prompt.ask("\n[bold]Press Enter to continue[/bold]", default="")
+    
+    def _evaluate_ventilation_impact(self, report: dict, room_analyses: dict):
+        """Evaluate the impact of implementing ventilation improvements."""
+        console.clear()
+        console.print("\n[bold cyan]═══ Ventilation Impact Evaluation ═══[/bold cyan]\n")
+        
+        room_recs = report.get('room_recommendations', {})
+        ventilation_rooms = []
+        
+        for room_id, recs in room_recs.items():
+            for rec in recs:
+                if rec.type.value in ['mechanical_ventilation', 'natural_ventilation']:
+                    room = room_analyses.get(room_id)
+                    if room:
+                        ventilation_rooms.append({
+                            'room': room,
+                            'recommendation': rec
+                        })
+                    break
+        
+        if not ventilation_rooms:
+            console.print("[yellow]No ventilation recommendations found for this building.[/yellow]")
+            Prompt.ask("\n[bold]Press Enter to continue[/bold]", default="")
+            return
+        
+        console.print(f"[bold]Rooms with Ventilation Recommendations:[/bold] {len(ventilation_rooms)}")
+        if self.current_building is not None:
+            console.print(f"[bold]Building:[/bold] {self.current_building.building_name}\n")
+        
+        console.print("[dim]Impact evaluation for ventilation improvements...[/dim]")
+        console.print("[dim]This feature analyzes CO2 compliance and air quality improvements.[/dim]\n")
+        
+        Prompt.ask("\n[bold]Press Enter to continue[/bold]", default="")
     
     def _confirm_exit(self):
         """Confirm and exit the explorer."""

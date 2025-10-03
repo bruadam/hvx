@@ -1,48 +1,99 @@
 analytics:
   temp_below_20_all_year_opening:
-    description: Temperatur <20°C - Underkøling (hele året, åbningstid)
+    description: Temperature <20°C - Undercooling (all year, opening hours)
     feature: temperature
     period: all_year
     filter: opening_hours
     mode: unidirectional_descending
     limit: 20
   temp_below_20_winter_opening:
-    description: Temperatur <20°C - Underkøling (vinter, åbningstid)
+    description: Temperature <20°C - Undercooling (winter, opening hours)
     feature: temperature
     period: winter
     filter: opening_hours
     mode: unidirectional_descending
     limit: 20
   temp_above_26_all_year_opening:
-    description: Temperatur >26°C - Overophedning (hele året, åbningstid)
+    description: Temperature >26°C - Overheating (all year, opening hours)
     feature: temperature
     period: all_year
     filter: opening_hours
     mode: unidirectional_ascending
     limit: 26
   temp_above_26_summer_opening:
-    description: Temperatur >26°C - Overophedning (sommer, åbningstid)
+    description: Temperature >26°C - Overheating (summer, opening hours)
     feature: temperature
     period: summer
     filter: opening_hours
     mode: unidirectional_ascending
     limit: 26
   temp_above_27_all_year_opening:
-    description: Temperatur >27°C - Kritisk overophedning (hele året, åbningstid)
+    description: Temperature >27°C - Critical overheating (all year, opening hours)
     feature: temperature
     period: all_year
     filter: opening_hours
     mode: unidirectional_ascending
     limit: 27
   temp_above_27_summer_opening:
-    description: Temperatur >27°C - Kritisk overophedning (sommer, åbningstid)
+    description: Temperature >27°C - Critical overheating (summer, opening hours)
     feature: temperature
     period: summer
     filter: opening_hours
     mode: unidirectional_ascending
     limit: 27
+  temp_above_28_all_year_all_hours:
+    description: Temperature >28°C - Extreme overheating (all year, all hours)
+    feature: temperature
+    period: all_year
+    filter: all_hours
+    mode: unidirectional_ascending
+    limit: 28
+  # BR18 Danish Building Regulations - Office Buildings
+  br18_office_temp_above_26_max_100h:
+    description: BR18 Office - Max 100h/year >26°C (all hours during usage time)
+    feature: temperature
+    period: all_year
+    filter: opening_hours
+    mode: unidirectional_ascending
+    limit: 26
+    max_exceedance_hours: 100
+    regulation: BR18
+    building_type: office
+  br18_office_temp_above_27_max_25h:
+    description: BR18 Office - Max 25h/year >27°C (all hours during usage time)
+    feature: temperature
+    period: all_year
+    filter: opening_hours
+    mode: unidirectional_ascending
+    limit: 27
+    max_exceedance_hours: 25
+    regulation: BR18
+    building_type: office
+  # BR18 Danish Building Regulations - Residential with Natural Ventilation
+  br18_residential_temp_above_27_max_100h:
+    description: BR18 Residential - Max 100h/year >27°C (natural ventilation, all hours)
+    feature: temperature
+    period: all_year
+    filter: all_hours
+    mode: unidirectional_ascending
+    limit: 27
+    max_exceedance_hours: 100
+    regulation: BR18
+    building_type: residential
+    ventilation_type: natural
+  br18_residential_temp_above_28_max_25h:
+    description: BR18 Residential - Max 25h/year >28°C (natural ventilation, all hours)
+    feature: temperature
+    period: all_year
+    filter: all_hours
+    mode: unidirectional_ascending
+    limit: 28
+    max_exceedance_hours: 25
+    regulation: BR18
+    building_type: residential
+    ventilation_type: natural
   temp_comfort_zone_20_26_all_year_opening:
-    description: Temperatur 20-26°C - Komfortzone (hele året, åbningstid, ekskl. ferier)
+    description: Temperature 20-26°C - Comfort zone (all year, opening hours, excl. holidays)
     feature: temperature
     period: all_year
     filter: opening_hours_no_holidays
@@ -51,7 +102,7 @@ analytics:
       upper: 26
       lower: 20
   temp_comfort_zone_20_26_spring_opening:
-    description: Temperatur 20-26°C - Komfortzone (forår, åbningstid, ekskl. ferier)
+    description: Temperature 20-26°C - Comfort zone (spring, opening hours, excl. holidays)
     feature: temperature
     period: spring
     filter: opening_hours_no_holidays
@@ -60,7 +111,7 @@ analytics:
       upper: 26
       lower: 20
   temp_comfort_zone_20_26_summer_opening:
-    description: Temperatur 20-26°C - Komfortzone (sommer, åbningstid, ekskl. ferier)
+    description: Temperature 20-26°C - Comfort zone (summer, opening hours, excl. holidays)
     feature: temperature
     period: summer
     filter: opening_hours_no_holidays
@@ -69,7 +120,7 @@ analytics:
       upper: 26
       lower: 20
   temp_comfort_zone_20_26_autumn_opening:
-    description: Temperatur 20-26°C - Komfortzone (efterår, åbningstid, ekskl. ferier)
+    description: Temperature 20-26°C - Comfort zone (autumn, opening hours, excl. holidays)
     feature: temperature
     period: autumn
     filter: opening_hours_no_holidays
@@ -78,7 +129,7 @@ analytics:
       upper: 26
       lower: 20
   temp_comfort_zone_20_26_winter_opening:
-    description: Temperatur 20-26°C - Komfortzone (vinter, åbningstid, ekskl. ferier)
+    description: Temperature 20-26°C - Comfort zone (winter, opening hours, excl. holidays)
     feature: temperature
     period: winter
     filter: opening_hours_no_holidays
@@ -87,8 +138,7 @@ analytics:
       upper: 26
       lower: 20
   temp_optimal_zone_21_24_all_year_opening:
-    description: Temperatur 21-24°C - Optimal komfort (hele året, åbningstid, ekskl.
-      ferier)
+    description: Temperature 21-24°C - Optimal comfort (all year, opening hours, excl. holidays)
     feature: temperature
     period: all_year
     filter: opening_hours_no_holidays
@@ -97,138 +147,133 @@ analytics:
       upper: 24
       lower: 21
   co2_1000_all_year_opening:
-    description: CO₂ <1000ppm - Standard luftkvalitet (hele året, åbningstid, ekskl.
-      ferier)
+    description: CO₂ <1000ppm - Standard air quality (all year, opening hours, excl. holidays)
     feature: co2
     period: all_year
     filter: opening_hours_no_holidays
     mode: unidirectional_ascending
     limit: 1000
   co2_1000_all_year_non_opening:
-    description: CO₂ <1000ppm - Standard luftkvalitet (hele året, uden for åbningstid)
+    description: CO₂ <1000ppm - Standard air quality (all year, outside opening hours)
     feature: co2
     period: all_year
     filter: non_opening_hours
     mode: unidirectional_ascending
     limit: 1000
   co2_1000_spring_opening:
-    description: CO₂ <1000ppm - Standard luftkvalitet (forår, åbningstid, ekskl. ferier)
+    description: CO₂ <1000ppm - Standard air quality (spring, opening hours, excl. holidays)
     feature: co2
     period: spring
     filter: opening_hours_no_holidays
     mode: unidirectional_ascending
     limit: 1000
   co2_1000_summer_opening:
-    description: CO₂ <1000ppm - Standard luftkvalitet (sommer, åbningstid, ekskl.
-      ferier)
+    description: CO₂ <1000ppm - Standard air quality (summer, opening hours, excl. holidays)
     feature: co2
     period: summer
     filter: opening_hours_no_holidays
     mode: unidirectional_ascending
     limit: 1000
   co2_1000_autumn_opening:
-    description: CO₂ <1000ppm - Standard luftkvalitet (efterår, åbningstid, ekskl.
-      ferier)
+    description: CO₂ <1000ppm - Standard air quality (autumn, opening hours, excl. holidays)
     feature: co2
     period: autumn
     filter: opening_hours_no_holidays
     mode: unidirectional_ascending
     limit: 1000
   co2_1000_winter_opening:
-    description: CO₂ <1000ppm - Standard luftkvalitet (vinter, åbningstid, ekskl.
-      ferier)
+    description: CO₂ <1000ppm - Standard air quality (winter, opening hours, excl. holidays)
     feature: co2
     period: winter
     filter: opening_hours_no_holidays
     mode: unidirectional_ascending
     limit: 1000
   co2_2000_all_year_opening:
-    description: CO₂ <2000ppm - Acceptabel grænse (hele året, åbningstid, ekskl. ferier)
+    description: CO₂ <2000ppm - Acceptable threshold (all year, opening hours, excl. holidays)
     feature: co2
     period: all_year
     filter: opening_hours_no_holidays
     mode: unidirectional_ascending
     limit: 2000
   co2_2000_all_year_non_opening:
-    description: CO₂ <2000ppm - Acceptabel grænse (hele året, uden for åbningstid)
+    description: CO₂ <2000ppm - Acceptable threshold (all year, outside opening hours)
     feature: co2
     period: all_year
     filter: non_opening_hours
     mode: unidirectional_ascending
     limit: 2000
   co2_2000_spring_opening:
-    description: CO₂ <2000ppm - Acceptabel grænse (forår, åbningstid, ekskl. ferier)
+    description: CO₂ <2000ppm - Acceptable threshold (spring, opening hours, excl. holidays)
     feature: co2
     period: spring
     filter: opening_hours_no_holidays
     mode: unidirectional_ascending
     limit: 2000
   co2_2000_summer_opening:
-    description: CO₂ <2000ppm - Acceptabel grænse (sommer, åbningstid, ekskl. ferier)
+    description: CO₂ <2000ppm - Acceptable threshold (summer, opening hours, excl. holidays)
     feature: co2
     period: summer
     filter: opening_hours_no_holidays
     mode: unidirectional_ascending
     limit: 2000
   co2_2000_autumn_opening:
-    description: CO₂ <2000ppm - Acceptabel grænse (efterår, åbningstid, ekskl. ferier)
+    description: CO₂ <2000ppm - Acceptable threshold (autumn, opening hours, excl. holidays)
     feature: co2
     period: autumn
     filter: opening_hours_no_holidays
     mode: unidirectional_ascending
     limit: 2000
   co2_2000_winter_opening:
-    description: CO₂ <2000ppm - Acceptabel grænse (vinter, åbningstid, ekskl. ferier)
+    description: CO₂ <2000ppm - Acceptable threshold (winter, opening hours, excl. holidays)
     feature: co2
     period: winter
     filter: opening_hours_no_holidays
     mode: unidirectional_ascending
     limit: 2000
   co2_1000_morning:
-    description: CO₂ <1000ppm (morgen 8-11, åbningstid, ekskl. ferier)
+    description: CO₂ <1000ppm (morning 8-11, opening hours, excl. holidays)
     feature: co2
     period: all_year
     filter: morning_no_holidays
     mode: unidirectional_ascending
     limit: 1000
   co2_1000_afternoon:
-    description: CO₂ <1000ppm (eftermiddag 12-15, åbningstid, ekskl. ferier)
+    description: CO₂ <1000ppm (afternoon 12-15, opening hours, excl. holidays)
     feature: co2
     period: all_year
     filter: afternoon_no_holidays
     mode: unidirectional_ascending
     limit: 1000
   co2_1000_evening_opening:
-    description: CO₂ <1000ppm (aften 16-21, åbningstid, ekskl. ferier)
+    description: CO₂ <1000ppm (evening 16-21, opening hours, excl. holidays)
     feature: co2
     period: all_year
     filter: evening_no_holidays
     mode: unidirectional_ascending
     limit: 1000
   co2_2000_morning_opening:
-    description: CO₂ <2000ppm (morgen 8-11, åbningstid, ekskl. ferier)
+    description: CO₂ <2000ppm (morning 8-11, opening hours, excl. holidays)
     feature: co2
     period: all_year
     filter: morning_no_holidays
     mode: unidirectional_ascending
     limit: 2000
   co2_2000_afternoon_opening:
-    description: CO₂ <2000ppm (eftermiddag 12-15, åbningstid, ekskl. ferier)
+    description: CO₂ <2000ppm (afternoon 12-15, opening hours, excl. holidays)
     feature: co2
     period: all_year
     filter: afternoon_no_holidays
     mode: unidirectional_ascending
     limit: 2000
   co2_2000_evening_opening:
-    description: CO₂ <2000ppm (aften 16-21, åbningstid, ekskl. ferier)
+    description: CO₂ <2000ppm (evening 16-21, opening hours, excl. holidays)
     feature: co2
     period: all_year
     filter: evening_no_holidays
     mode: unidirectional_ascending
     limit: 2000
   temp_comfort_zone_20_26_morning_opening:
-    description: Temperatur 20-26°C - Komfortzone (morgen 8-11, åbningstid, ekskl.
-      ferier)
+    description: Temperature 20-26°C - Comfort zone (morning 8-11, opening hours, excl. holidays)
     feature: temperature
     period: all_year
     filter: morning_no_holidays
@@ -237,8 +282,7 @@ analytics:
       upper: 26
       lower: 20
   temp_comfort_zone_20_26_afternoon_opening:
-    description: Temperatur 20-26°C - Komfortzone (eftermiddag 12-15, åbningstid,
-      ekskl. ferier)
+    description: Temperature 20-26°C - Comfort zone (afternoon 12-15, opening hours, excl. holidays)
     feature: temperature
     period: all_year
     filter: afternoon_no_holidays
@@ -247,8 +291,7 @@ analytics:
       upper: 26
       lower: 20
   temp_comfort_zone_20_26_evening_opening:
-    description: Temperatur 20-26°C - Komfortzone (aften 16-21, åbningstid, ekskl.
-      ferier)
+    description: Temperature 20-26°C - Comfort zone (evening 16-21, opening hours, excl. holidays)
     feature: temperature
     period: all_year
     filter: evening_no_holidays
@@ -257,7 +300,7 @@ analytics:
       upper: 26
       lower: 20
   comfort_optimal_opening:
-    description: Optimal comfort (temperatur 21-24°C og CO2 <800ppm, åbningstid)
+    description: Optimal comfort (temperature 21-24°C and CO2 <800ppm, opening hours)
     feature: combined
     period: all_year
     filter: opening_hours
@@ -347,7 +390,7 @@ filters:
     weekdays_only: true
     exclude_holidays: true
   opening_hours_no_holidays:
-    description: Åbningstider (8-15), hverdage, ekskluderer alle skoleferier
+    description: Opening hours (8-15), weekdays, excludes all school holidays
     hours:
     - 8
     - 9
@@ -389,7 +432,7 @@ filters:
     weekdays_only: false
     exclude_holidays: false
   morning_no_holidays:
-    description: Morgen (8-11), hverdage, ekskluderer skoleferier
+    description: Morning (8-11), weekdays, excludes school holidays
     hours:
     - 8
     - 9
@@ -407,7 +450,7 @@ filters:
     weekdays_only: false
     exclude_holidays: false
   afternoon_no_holidays:
-    description: Eftermiddag (12-15), hverdage, ekskluderer skoleferier
+    description: Afternoon (12-15), weekdays, excludes school holidays
     hours:
     - 12
     - 13
@@ -427,7 +470,7 @@ filters:
     weekdays_only: false
     exclude_holidays: false
   evening_no_holidays:
-    description: Aften (16-21), hverdage, ekskluderer skoleferier
+    description: Evening (16-21), weekdays, excludes school holidays
     hours:
     - 16
     - 17
@@ -503,21 +546,21 @@ table_mappings:
     description: Maps day period tests to table fields
     periods:
       morning:
-        display_name: Morgen (08-12)
+        display_name: Morning (08-12)
         co2_1000_compliance: co2_1000_morning
         co2_2000_compliance: co2_2000_morning_opening
         temp_compliance: temp_comfort_zone_20_26_morning_opening
         avg_co2: Extracted from mean values of co2_1000_morning
         avg_temp: Extracted from mean values of temp_comfort_zone_20_26_morning_opening
       afternoon:
-        display_name: Eftermiddag (12-16)
+        display_name: Afternoon (12-16)
         co2_1000_compliance: co2_1000_afternoon
         co2_2000_compliance: co2_2000_afternoon_opening
         temp_compliance: temp_comfort_zone_20_26_afternoon_opening
         avg_co2: Extracted from mean values of co2_1000_afternoon
         avg_temp: Extracted from mean values of temp_comfort_zone_20_26_afternoon_opening
       evening:
-        display_name: Aften (16-21)
+        display_name: Evening (16-21)
         co2_1000_compliance: co2_1000_evening_opening
         co2_2000_compliance: co2_2000_evening_opening
         temp_compliance: temp_comfort_zone_20_26_evening_opening
@@ -527,28 +570,28 @@ table_mappings:
     description: Maps seasonal tests to table fields
     seasons:
       spring:
-        display_name: Forår
+        display_name: Spring
         co2_1000_compliance: co2_1000_spring_opening
         co2_2000_compliance: co2_2000_spring_opening
         temp_compliance: temp_comfort_zone_20_26_spring_opening
         avg_co2: Extracted from mean values of co2_1000_spring_opening
         avg_temp: Extracted from mean values of temp_comfort_zone_20_26_spring_opening
       summer:
-        display_name: Sommer
+        display_name: Summer
         co2_1000_compliance: co2_1000_summer_opening
         co2_2000_compliance: co2_2000_summer_opening
         temp_compliance: temp_comfort_zone_20_26_summer_opening
         avg_co2: Extracted from mean values of co2_1000_summer_opening
         avg_temp: Extracted from mean values of temp_comfort_zone_20_26_summer_opening
       autumn:
-        display_name: Efterår
+        display_name: Autumn
         co2_1000_compliance: co2_1000_autumn_opening
         co2_2000_compliance: co2_2000_autumn_opening
         temp_compliance: temp_comfort_zone_20_26_autumn_opening
         avg_co2: Extracted from mean values of co2_1000_autumn_opening
         avg_temp: Extracted from mean values of temp_comfort_zone_20_26_autumn_opening
       winter:
-        display_name: Vinter
+        display_name: Winter
         co2_1000_compliance: co2_1000_winter_opening
         co2_2000_compliance: co2_2000_winter_opening
         temp_compliance: temp_comfort_zone_20_26_winter_opening

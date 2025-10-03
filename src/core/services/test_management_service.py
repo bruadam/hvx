@@ -24,7 +24,7 @@ class TestDefinition:
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary format for YAML export."""
-        result = {
+        result: Dict[str, Any] = {
             'description': self.description,
             'feature': self.feature,
             'period': self.period,
@@ -122,7 +122,16 @@ class TestSet:
 class TestManagementService:
     """Service for managing test configurations."""
 
-    def __init__(self, config_path: Path = Path("config/tests.yaml")):
+    def __init__(self, config_path: Optional[Path] = None):
+        """
+        Initialize the test management service.
+        
+        Args:
+            config_path: Path to the tests configuration file (uses package config if None)
+        """
+        from src.core.utils.config_loader import get_tests_config_path
+        if config_path is None:
+            config_path = get_tests_config_path()
         """Initialize with config file path."""
         self.config_path = config_path
         self.config_data: Dict[str, Any] = {}

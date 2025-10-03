@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import List, Optional, Dict, Any
 from datetime import datetime
 
-from src.models.report_template_models import (
+from src.core.models.report_template_models import (
     ReportTemplate, ReportSection, SectionType, AnalysisLevel,
     MetadataSection, TextSection, GraphSection, TableSection,
     SummarySection, RecommendationsSection, IssuesSection, LoopSection,

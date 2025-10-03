@@ -5,7 +5,7 @@ import yaml
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 
-from src.graphs.renderers import (
+from src.core.graphs.renderers import (
     render_bar_chart,
     render_line_chart,
     render_heatmap,

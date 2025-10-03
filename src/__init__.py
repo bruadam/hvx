@@ -12,7 +12,7 @@ __author__ = "Bruno Adam"
 from src.core import UnifiedAnalyticsEngine
 
 # Services
-from src.services import (
+from src.core.services import (
     GraphService,
     TemplateService,
     AnalyticsService,

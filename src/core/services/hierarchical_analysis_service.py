@@ -15,8 +15,8 @@ import pandas as pd
 import numpy as np
 import yaml
 
-from src.models.building_data import BuildingDataset, Building, Level, Room, TimeSeriesData
-from src.models.analysis_models import (
+from src.core.models.building_data import BuildingDataset, Building, Level, Room, TimeSeriesData
+from src.core.models.analysis_models import (
     RoomAnalysis, LevelAnalysis, BuildingAnalysis, PortfolioAnalysis,
     AnalysisResults, TestResult, AnalysisSeverity, AnalysisStatus
 )
@@ -35,7 +35,8 @@ class HierarchicalAnalysisService:
         Args:
             config_path: Path to tests.yaml configuration file
         """
-        self.config_path = config_path or Path("config/tests.yaml")
+        from src.core.utils.config_loader import get_tests_config_path
+        self.config_path = config_path or get_tests_config_path()
         self.config = self._load_config()
         self.analytics_engine = None
         # Initialize filter processor with config
@@ -57,7 +58,8 @@ class HierarchicalAnalysisService:
         dataset: BuildingDataset,
         output_dir: Path,
         portfolio_name: str = "Portfolio",
-        save_individual_files: bool = True
+        save_individual_files: bool = True,
+        verbose: bool = False
     ) -> AnalysisResults:
         """
         Perform complete hierarchical analysis on a dataset.
@@ -67,6 +69,7 @@ class HierarchicalAnalysisService:
             output_dir: Directory to save analysis results
             portfolio_name: Name for the portfolio analysis
             save_individual_files: Whether to save individual JSON files per room/level/building
+            verbose: Whether to display detailed warnings and debug information
         
         Returns:
             AnalysisResults containing all analyses
@@ -110,8 +113,9 @@ class HierarchicalAnalysisService:
         results.save_all_to_directory(output_dir)
         logger.info(f"Analysis complete. Results saved to: {output_dir}")
         
-        # Display grouped warnings at the end
-        self._display_filter_warnings_summary()
+        # Display grouped warnings at the end (only if verbose)
+        if verbose:
+            self._display_filter_warnings_summary()
         
         return results
     
@@ -280,7 +284,18 @@ class HierarchicalAnalysisService:
             total_hours = len(data_series)
             compliant_hours = int(compliant.sum())
             non_compliant_hours = total_hours - compliant_hours
-            compliance_rate = (compliant_hours / total_hours * 100) if total_hours > 0 else 0
+            
+            # Check for hour-based tolerance (BR18 regulations)
+            max_exceedance_hours = test_config.get('max_exceedance_hours')
+            if max_exceedance_hours is not None:
+                # Binary compliance: pass (100%) if exceedance hours <= limit, fail (0%) otherwise
+                if non_compliant_hours <= max_exceedance_hours:
+                    compliance_rate = 100.0
+                else:
+                    compliance_rate = 0.0
+            else:
+                # Standard percentage-based compliance
+                compliance_rate = (compliant_hours / total_hours * 100) if total_hours > 0 else 0
             
             # Calculate statistics
             statistics = {
@@ -422,7 +437,7 @@ class HierarchicalAnalysisService:
         Returns:
             Tuple of (correlations dict, weather stats dict)
         """
-        from src.models.building_data import ClimateData
+        from src.core.models.building_data import ClimateData
         
         correlations = {}
         weather_stats = {}
@@ -454,9 +469,9 @@ class HierarchicalAnalysisService:
                 # Handle timezone mismatch - make both timezone-naive for alignment
                 if hasattr(weather_series.index, 'tz') and weather_series.index.tz is not None:
                     weather_series.index = weather_series.index.tz_localize(None)
-                
-                indoor_index = data_series.index
-                if hasattr(indoor_index, 'tz') and indoor_index.tz is not None:
+
+                indoor_index = pd.DatetimeIndex(data_series.index)
+                if indoor_index.tz is not None:
                     indoor_index = indoor_index.tz_localize(None)
                 
                 # Align weather data with indoor data
@@ -791,13 +806,15 @@ class HierarchicalAnalysisService:
             }
             for b in sorted_buildings[:5]
         ]
+        # Get worst performing buildings in ascending order (worst first)
+        worst_buildings = list(reversed(sorted_buildings[-5:]))  # Get bottom 5 buildings, reverse to show worst first
         analysis.worst_performing_buildings = [
             {
-                'building_id': b.building_id,
-                'building_name': b.building_name,
-                'compliance_rate': b.avg_compliance_rate
+            'building_id': b.building_id,
+            'building_name': b.building_name,
+            'compliance_rate': b.avg_compliance_rate
             }
-            for b in sorted_buildings[-5:]
+            for b in worst_buildings
         ]
         
         # Aggregate issues and recommendations
@@ -843,6 +860,7 @@ class HierarchicalAnalysisService:
                 continue
             
             compliance_rates = [tr.compliance_rate for tr in test_results]
+            non_compliant_hours_list = [tr.non_compliant_hours for tr in test_results]
             
             aggregations[test_name] = {
                 'avg_compliance_rate': sum(compliance_rates) / len(compliance_rates),
@@ -850,7 +868,9 @@ class HierarchicalAnalysisService:
                 'max_compliance_rate': max(compliance_rates),
                 'room_count': len(test_results),
                 'parameter': test_results[0].parameter,
-                'threshold': test_results[0].threshold
+                'threshold': test_results[0].threshold,
+                'total_non_compliant_hours': sum(non_compliant_hours_list),
+                'avg_non_compliant_hours': sum(non_compliant_hours_list) / len(non_compliant_hours_list) if non_compliant_hours_list else 0
             }
         
         return aggregations

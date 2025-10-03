@@ -60,7 +60,7 @@ Repository = "https://github.com/bruadam/hvx"
 hvx = "src.cli.main:cli"
 
 [tool.setuptools]
-packages = ["src", "src.cli", "src.core", "src.models", "src.graphs", "src.services", "src.utils", "src.reporting"]
+packages = ["src", "src.cli", "src.core"]
 include-package-data = true
 
 [tool.setuptools.package-data]
