@@ -8,10 +8,18 @@ import numpy as np
 from src.core.models.domain.level import Level
 from src.core.models.domain.room import Room
 from src.core.models.domain.climate import ClimateData
+from src.core.models.domain.brick_base import BrickSchemaSpace
 
 
-class Building(BaseModel):
-    """Enhanced building model with levels and climate data."""
+class Building(BrickSchemaSpace):
+    """Enhanced building model with levels, climate data, and Brick Schema compatibility.
+    
+    This model extends BrickSchemaSpace to represent buildings with semantic
+    interoperability while maintaining analytical capabilities.
+    """
+    
+    # Default Brick type for buildings
+    _default_brick_type: str = "brick:Building"
 
     id: str = Field(..., description="Unique building identifier")
     name: str = Field(..., description="Human-readable building name")
@@ -39,6 +47,28 @@ class Building(BaseModel):
         if not v or not v.strip():
             raise ValueError("String fields cannot be empty")
         return v.strip()
+    
+    def __init__(self, **data):
+        """Initialize Building with Brick Schema support."""
+        super().__init__(**data)
+        
+        # Auto-generate Brick URI if not provided
+        if not self.brick_uri and hasattr(self, 'id'):
+            self.brick_uri = f"urn:building:{self.id}"
+        
+        # Set Brick metadata based on building properties
+        if self.address:
+            self.brick_metadata['address'] = self.address
+        if self.city:
+            self.brick_metadata['city'] = self.city
+        if self.postal_code:
+            self.brick_metadata['postalCode'] = self.postal_code
+        if self.country:
+            self.brick_metadata['country'] = self.country
+        if self.construction_year:
+            self.brick_metadata['constructionYear'] = self.construction_year
+        if self.total_area_m2:
+            self.brick_metadata['totalArea'] = {'value': self.total_area_m2, 'unit': 'squareMeter'}
 
     def add_level(self, level: Level) -> None:
         """Add a level to the building."""
@@ -51,6 +81,11 @@ class Building(BaseModel):
             raise ValueError(f"Level with ID {level.id} already exists in building {self.id}")
 
         self.levels.append(level)
+        
+        # Add Brick Schema relationship
+        if self.brick_uri and level.brick_uri:
+            self.add_brick_relationship('hasPart', level.brick_uri)
+            level.add_brick_relationship('isPartOf', self.brick_uri)
 
     def add_room(self, room: Room, level_id: Optional[str] = None) -> None:
         """Add a room to the building and optionally to a specific level."""
@@ -70,6 +105,11 @@ class Building(BaseModel):
             if level:
                 room.level_id = level_id
                 level.add_room(room)
+        
+        # Add Brick Schema relationship (room is part of building)
+        if self.brick_uri and room.brick_uri:
+            self.add_brick_relationship('hasPart', room.brick_uri)
+            room.add_brick_relationship('isPartOf', self.brick_uri)
 
     def get_level(self, level_id: str) -> Optional[Level]:
         """Get a level by ID."""
@@ -120,3 +160,4 @@ class Building(BaseModel):
                 summary['overall_quality_score'] = float(np.mean(quality_scores))
 
         return summary
+

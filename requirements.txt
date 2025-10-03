@@ -24,3 +24,4 @@ requests
 streamlit
 inquirer
 pytest
+brickschema>=0.2.0

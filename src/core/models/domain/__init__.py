@@ -3,6 +3,7 @@
 from src.core.models.domain.data_quality import DataQuality
 from src.core.models.domain.timeseries import TimeSeriesData
 from src.core.models.domain.climate import ClimateData
+from src.core.models.domain.brick_base import BrickSchemaEntity, BrickSchemaSpace, BrickSchemaPoint
 from src.core.models.domain.room import Room
 from src.core.models.domain.level import Level
 from src.core.models.domain.building import Building
@@ -17,6 +18,10 @@ __all__ = [
     'TimeSeriesData',
     # Climate
     'ClimateData',
+    # Brick Schema base classes
+    'BrickSchemaEntity',
+    'BrickSchemaSpace',
+    'BrickSchemaPoint',
     # Building hierarchy
     'Room',
     'Level',

@@ -7,10 +7,11 @@ from pydantic import BaseModel, Field
 import json
 
 from src.core.models.enums import Status
+from src.core.models.domain.brick_base import BrickSchemaEntity
 
 
-class LevelAnalysis(BaseModel):
-    """Aggregated analysis results for a building level/floor."""
+class LevelAnalysis(BrickSchemaEntity):
+    """Aggregated analysis results for a building level/floor with Brick Schema compatibility."""
 
     # Identification
     level_id: str = Field(..., description="Unique level identifier")
@@ -54,6 +55,25 @@ class LevelAnalysis(BaseModel):
 
     # Metadata
     metadata: Dict[str, Any] = Field(default_factory=dict, description="Additional metadata")
+    
+    def __init__(self, **data):
+        """Initialize LevelAnalysis with Brick Schema support."""
+        super().__init__(**data)
+        
+        # Auto-generate Brick URI for analysis results
+        if not self.brick_uri and hasattr(self, 'level_id') and hasattr(self, 'building_id'):
+            timestamp = self.analysis_timestamp.strftime('%Y%m%d%H%M%S') if hasattr(self, 'analysis_timestamp') else 'unknown'
+            self.brick_uri = f"urn:building:{self.building_id}:floor:{self.level_id}:analysis:{timestamp}"
+        
+        # Set Brick type for analysis results
+        if not self.brick_type:
+            self.brick_type = "brick:Analysis_Result"
+        
+        # Add analysis metadata to Brick metadata
+        if hasattr(self, 'avg_compliance_rate'):
+            self.brick_metadata['avgComplianceRate'] = self.avg_compliance_rate
+        if hasattr(self, 'avg_quality_score'):
+            self.brick_metadata['avgQualityScore'] = self.avg_quality_score
 
     def save_to_json(self, filepath: Path) -> None:
         """Save analysis to JSON file."""
@@ -67,3 +87,4 @@ class LevelAnalysis(BaseModel):
         with open(filepath, 'r', encoding='utf-8') as f:
             data = json.load(f)
         return cls(**data)
+
