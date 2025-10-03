@@ -88,7 +88,7 @@ class SimplifiedWorkflow:
         console.print("\n[bold cyan]📂 Loading Building Data...[/bold cyan]\n")
         
         from src.core.services.data_loader_service import create_data_loader
-        from src.core.models.building_data import BuildingDataset
+        from src.core.models import BuildingDataset
         
         # Check if dataset file exists
         if self.dataset_path and self.dataset_path.exists():
@@ -265,7 +265,7 @@ class SimplifiedWorkflow:
     
     def _load_analysis_results(self):
         """Load analysis results from files."""
-        from src.core.models.analysis_models import PortfolioAnalysis, BuildingAnalysis
+        from src.core.models import PortfolioAnalysis, BuildingAnalysis
 
         if self.analysis_dir is None:
             console.print("[yellow]No analysis directory found. Cannot load analysis results.[/yellow]")
@@ -362,7 +362,7 @@ class SimplifiedWorkflow:
             return
         
         from src.core.services.smart_recommendations_service import SmartRecommendationsService
-        from src.core.models.analysis_models import RoomAnalysis
+        from src.core.models import RoomAnalysis
         
         # Load all room analyses from all buildings
         if self.analysis_dir is None:
@@ -898,7 +898,7 @@ class SimplifiedWorkflow:
         console.print(f"\n[bold cyan]💡 Smart Recommendations: {building.building_name}[/bold cyan]\n")
         
         from src.core.services.smart_recommendations_service import generate_building_recommendations_report
-        from src.core.models.analysis_models import RoomAnalysis
+        from src.core.models import RoomAnalysis
         
         # Load room analyses
         room_analyses = {}
@@ -1099,7 +1099,7 @@ class SimplifiedWorkflow:
         console.print(f"\n[bold cyan]📈 Generating Graph: {friendly_name}[/bold cyan]\n")
         
         try:
-            from src.core.models.analysis_models import RoomAnalysis
+            from src.core.models import RoomAnalysis
             import pandas as pd
             import plotly.graph_objects as go
             import webbrowser
@@ -1325,7 +1325,7 @@ class SimplifiedWorkflow:
         console.print(f"\n[bold cyan]📋 Room Breakdown: {friendly_name}[/bold cyan]\n")
         
         try:
-            from src.core.models.analysis_models import RoomAnalysis
+            from src.core.models import RoomAnalysis
             
             # Load room analyses
             if self.analysis_dir is None:
@@ -1399,7 +1399,7 @@ class SimplifiedWorkflow:
     
     def _navigate_rooms(self, building):
         """Navigate through rooms in a building."""
-        from src.core.models.analysis_models import RoomAnalysis
+        from src.core.models import RoomAnalysis
         
         # Load room data
         if self.analysis_dir is None:

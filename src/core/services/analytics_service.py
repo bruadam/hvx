@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Any
 from datetime import datetime
 
-from src.core import UnifiedAnalyticsEngine
+from src.core.analysis.ieq import AnalysisEngine
 
 
 class AnalyticsService:

@@ -14,11 +14,11 @@ from datetime import datetime
 import pandas as pd
 import numpy as np
 
-from src.core.models.building_data import (
-    Building, Level, Room, ClimateData, TimeSeriesData, 
-    BuildingDataset, DataQuality
+from src.core.models import (
+    Building, Level, Room, ClimateData, TimeSeriesData,
+    BuildingDataset, DataQuality,
+    RoomType, IEQParameter, DEFAULT_COLUMN_MAPPINGS, ROOM_TYPE_PATTERNS
 )
-from src.core.models.enums import RoomType, IEQParameter, DEFAULT_COLUMN_MAPPINGS, ROOM_TYPE_PATTERNS
 
 logger = logging.getLogger(__name__)
 
@@ -113,17 +113,28 @@ class DataLoaderService:
             climate_data=None
         )
         
-        # Load climate data if available
+        # Load climate data if available (check multiple locations)
+        # 1. Standard location: building/climate/
         climate_dir = building_dir / "climate"
-        if climate_dir.exists():
+        if climate_dir.exists() and climate_dir.is_dir():
             climate_data = self._load_climate_data(building_id, climate_dir)
             if climate_data:
                 building.set_climate_data(climate_data)
                 logger.info(f"Loaded climate data with {len(climate_data.timeseries)} parameters")
+        else:
+            # 2. Hybrid structure: climate files in building root
+            climate_files = [f for f in building_dir.glob("*.csv") 
+                           if self._is_climate_filename(f.name)]
+            if climate_files:
+                climate_data = self._load_climate_from_files(building_id, climate_files)
+                if climate_data:
+                    building.set_climate_data(climate_data)
+                    logger.info(f"Loaded climate data from root files with {len(climate_data.timeseries)} parameters")
         
-        # Load sensor data from rooms
+        # Load sensor data from rooms (check multiple locations)
+        # 1. Standard location: building/sensors/
         sensors_dir = building_dir / "sensors"
-        if sensors_dir.exists():
+        if sensors_dir.exists() and sensors_dir.is_dir():
             rooms = self._load_rooms(building_id, sensors_dir)
             
             for room in rooms:
@@ -152,7 +163,67 @@ class DataLoaderService:
             
             logger.info(f"Loaded {len(rooms)} rooms for building {building_name}")
         else:
-            logger.warning(f"No sensors directory found for building {building_name}")
+            # 2. Alternative: level subdirectories (building/level/room.csv)
+            level_dirs = [d for d in building_dir.iterdir() 
+                         if d.is_dir() and not self._is_climate_folder(d)]
+            
+            if level_dirs:
+                for level_dir in level_dirs:
+                    level_rooms = self._load_rooms(building_id, level_dir)
+                    
+                    if level_rooms:
+                        # Create level from directory name
+                        level_id = self._sanitize_id(level_dir.name)
+                        floor_number = self._extract_floor_number(level_dir.name)
+                        
+                        level = Level(
+                            id=level_id,
+                            name=level_dir.name.replace('_', ' ').replace('-', ' ').title(),
+                            building_id=building_id,
+                            floor_number=floor_number
+                        )
+                        building.add_level(level)
+                        
+                        for room in level_rooms:
+                            building.add_room(room, level_id=level_id)
+                
+                logger.info(f"Loaded rooms from {len(level_dirs)} level directories")
+            else:
+                # 3. Hybrid: sensor files directly in building root
+                sensor_files = [f for f in building_dir.glob("*.csv") 
+                              if not self._is_climate_filename(f.name)]
+                
+                if sensor_files:
+                    rooms = []
+                    for sensor_file in sensor_files:
+                        room = self._load_room(building_id, sensor_file)
+                        if room:
+                            rooms.append(room)
+                    
+                    for room in rooms:
+                        if self.auto_infer_levels:
+                            level_id = self._infer_level_from_room(room)
+                            if level_id:
+                                level = building.get_level(level_id)
+                                if not level:
+                                    match = re.match(r'level_(-?\d+)', level_id)
+                                    floor_number = int(match.group(1)) if match else None
+                                    level = Level(
+                                        id=level_id,
+                                        name=self._format_level_name(level_id),
+                                        building_id=building_id,
+                                        floor_number=floor_number
+                                    )
+                                    building.add_level(level)
+                                building.add_room(room, level_id=level_id)
+                            else:
+                                building.add_room(room)
+                        else:
+                            building.add_room(room)
+                    
+                    logger.info(f"Loaded {len(rooms)} rooms from building root")
+                else:
+                    logger.warning(f"No sensors directory or sensor files found for building {building_name}")
         
         # Validate if requested
         if validate and building.rooms:
@@ -354,6 +425,91 @@ class DataLoaderService:
             'sunshine': 'hours'
         }
         return units.get(parameter, '')
+    
+    def _is_climate_filename(self, filename: str) -> bool:
+        """Check if a filename appears to be a climate data file."""
+        climate_patterns = ['climate', 'weather', 'outdoor', 'meteorological', 'meteo']
+        filename_lower = filename.lower()
+        return any(pattern in filename_lower for pattern in climate_patterns)
+    
+    def _is_climate_folder(self, folder: Path) -> bool:
+        """Check if a folder appears to be a climate data folder."""
+        climate_patterns = ['climate', 'weather', 'outdoor', 'meteorological', 'meteo']
+        folder_name_lower = folder.name.lower()
+        return any(pattern in folder_name_lower for pattern in climate_patterns)
+    
+    def _extract_floor_number(self, level_name: str) -> Optional[int]:
+        """Extract floor number from level directory name."""
+        # Try to find numbers in the name
+        match = re.search(r'(\d+)', level_name)
+        if match:
+            return int(match.group(1))
+        
+        # Check for special names
+        level_lower = level_name.lower()
+        if any(term in level_lower for term in ['ground', 'stue', 'erdgeschoss', 'rez']):
+            return 0
+        if any(term in level_lower for term in ['basement', 'kælder', 'keller', 'sous-sol']):
+            return -1
+        
+        return None
+    
+    def _load_climate_from_files(self, building_id: str, climate_files: List[Path]) -> Optional[ClimateData]:
+        """Load climate data from files in building root directory."""
+        if not climate_files:
+            return None
+        
+        # Use the first climate file found
+        climate_file = climate_files[0]
+        
+        try:
+            df = pd.read_csv(climate_file)
+            
+            # Parse timestamp column
+            timestamp_col = self._find_timestamp_column(list(df.columns))
+            if not timestamp_col:
+                logger.error(f"No timestamp column found in {climate_file}")
+                return None
+            
+            df[timestamp_col] = pd.to_datetime(df[timestamp_col])
+            df = df.set_index(timestamp_col)
+            df.index.name = 'timestamp'
+            
+            climate_data = ClimateData(
+                building_id=building_id,
+                source_file=str(climate_file),
+                period_start=df.index.min(),
+                period_end=df.index.max()
+            )
+            
+            # Create timeseries for each climate parameter
+            climate_params = {
+                'temperature': ['mean_temp', 'temp', 'temperature', 'outdoor_temp'],
+                'humidity': ['mean_relative_hum', 'humidity', 'rh', 'relative_humidity'],
+                'precipitation': ['acc_precip', 'precip', 'precipitation', 'rain'],
+                'wind_speed': ['mean_wind_speed', 'wind_speed', 'wind'],
+                'radiation': ['mean_radiation', 'radiation', 'solar_radiation'],
+                'sunshine': ['bright_sunshine', 'sunshine', 'sun_hours']
+            }
+            
+            for param_name, possible_cols in climate_params.items():
+                col = self._find_column(list(df.columns), possible_cols)
+                if col:
+                    ts_data = TimeSeriesData(
+                        parameter=param_name,
+                        unit=self._infer_unit(param_name),
+                        data=df[[col]].rename(columns={col: param_name}),
+                        source_file=str(climate_file),
+                        period_start=df.index.min(),
+                        period_end=df.index.max()
+                    )
+                    climate_data.add_timeseries(param_name, ts_data)
+            
+            return climate_data
+            
+        except Exception as e:
+            logger.error(f"Error loading climate data from {climate_file}: {e}")
+            return None
     
     def _infer_level_from_room(self, room: Room) -> Optional[str]:
         """Infer building level from room name."""

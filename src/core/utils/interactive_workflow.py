@@ -16,9 +16,13 @@ from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.table import Table
 from rich import box
 
-from src.core.models.building_data import BuildingDataset
+from src.core.models import BuildingDataset
 from src.core.services.hierarchical_analysis_service import HierarchicalAnalysisService
 from src.core.services.report_service import ReportService
+from src.core.services.data_structure_detector import (
+    create_structure_detector, 
+    DirectoryStructureType
+)
 from src.core.utils.data_explorer import launch_explorer
 
 console = Console()
@@ -29,7 +33,7 @@ class InteractiveWorkflow:
     
     def __init__(self, auto_mode: bool = False, verbose: bool = False):
         """Initialize the workflow orchestrator.
-        
+
         Args:
             auto_mode: If True, use default values for all prompts without asking
             verbose: If True, show detailed warnings and debug information
@@ -37,27 +41,26 @@ class InteractiveWorkflow:
         self.dataset: Optional[BuildingDataset] = None
         self.dataset_file: Optional[Path] = None
         self.analysis_results = None
-        self.analysis_dir: Optional[Path] = None
+        self.data_directory: Optional[Path] = None
         from src.core.utils.config_loader import get_tests_config_path
         self.config_path: Path = get_tests_config_path()
         self.portfolio_name: str = "Portfolio"
         self.auto_mode: bool = auto_mode
         self.verbose: bool = verbose
-    
-    def start(self, dataset: Optional[BuildingDataset] = None, dataset_file: Optional[Path] = None):
+
+    def start(self, data_directory: Optional[Path] = None):
         """
         Start the interactive workflow.
         
         Args:
-            dataset: Pre-loaded BuildingDataset (optional)
+            data_directory: Path to the data directory (optional)
             dataset_file: Path to dataset pickle file (optional)
         """
         console.clear()
         self._show_welcome()
         
         # Set initial state
-        self.dataset = dataset
-        self.dataset_file = dataset_file
+        self.data_directory = data_directory
         
         # Main workflow loop
         self._main_workflow()
@@ -172,6 +175,13 @@ Type 'quit' or 'q' at any time to exit.
         
         elif choice == "2":
             # Load from directory
+            # Check if default data/ directory exists
+            default_data_dir = Path("data/samples/sample-extensive-data")
+            if not Path("data").exists():
+                console.print("\n[yellow]Note: 'data/' directory not found in current location[/yellow]")
+                console.print("[dim]Please specify the path to your data directory[/dim]\n")
+                default_data_dir = Path(".")
+            
             # Show expected structure
             console.print("\n[bold cyan]Expected Data Structure:[/bold cyan]")
             structure_info = """
@@ -198,12 +208,13 @@ Type 'quit' or 'q' at any time to exit.
   • [dim]Building folders can be named:[/dim] building-1, building-2, or custom names
   • [dim]Climate data is optional but recommended for smart recommendations[/dim]
   • [dim]Room CSV files will be auto-detected from the sensors/ folder[/dim]
+  • [dim]The system can also handle other structures (flat, hybrid, etc.)[/dim]
             """
             console.print(structure_info)
             
             data_dir = Prompt.ask(
                 "\n[bold]Enter data directory path[/bold]",
-                default="data/samples/sample-extensive-data"
+                default=str(default_data_dir)
             )
             return self._load_dataset_from_directory(Path(data_dir))
         
@@ -239,7 +250,65 @@ Type 'quit' or 'q' at any time to exit.
         try:
             if not data_dir.exists():
                 console.print(f"[red]✗ Directory not found:[/red] {data_dir}")
+                
+                # Prompt for alternative directory
+                if self.auto_mode:
+                    console.print("[yellow]Auto mode: Cannot proceed without valid directory[/yellow]")
+                    return False
+                
+                if Confirm.ask("\n[bold]Would you like to specify a different directory?[/bold]", default=True):
+                    new_dir = Prompt.ask("[bold]Enter data directory path[/bold]")
+                    return self._load_dataset_from_directory(Path(new_dir))
                 return False
+            
+            # Analyze directory structure
+            console.print("\n[dim]Analyzing directory structure...[/dim]")
+            detector = create_structure_detector()
+            analysis = detector.analyze_directory(data_dir)
+            
+            # Show analysis results
+            self._show_structure_analysis(analysis)
+            
+            # If structure is unknown or has low confidence, offer help
+            if analysis.structure_type == DirectoryStructureType.UNKNOWN or analysis.confidence < 0.5:
+                console.print("\n[yellow]⚠ Directory structure not recognized or has issues[/yellow]")
+                
+                if analysis.issues:
+                    console.print("\n[bold red]Issues:[/bold red]")
+                    for issue in analysis.issues:
+                        console.print(f"  • {issue}")
+                
+                if analysis.recommendations:
+                    console.print("\n[bold cyan]Recommendations:[/bold cyan]")
+                    for rec in analysis.recommendations:
+                        console.print(f"  • {rec}")
+                
+                # In auto mode, fail immediately
+                if self.auto_mode:
+                    console.print("\n[yellow]Auto mode: Cannot proceed with unsupported structure[/yellow]")
+                    return False
+                
+                # Offer reorganization guide
+                if Confirm.ask("\n[bold]Would you like to see the reorganization guide?[/bold]", default=True):
+                    guide = detector.get_reorganization_guide(analysis)
+                    console.print(guide)
+                
+                if not Confirm.ask("\n[bold]Try to load data anyway?[/bold]", default=False):
+                    return False
+            
+            # Show warnings for non-standard structures
+            elif analysis.structure_type in [
+                DirectoryStructureType.FLAT_BUILDING_PREFIX,
+                DirectoryStructureType.FLAT_BUILDING_LEVEL_PREFIX,
+                DirectoryStructureType.HYBRID_CLIMATE_FILES,
+                DirectoryStructureType.NESTED_FULL
+            ]:
+                if not self.auto_mode and analysis.recommendations:
+                    console.print("\n[yellow]Note:[/yellow] Non-standard structure detected")
+                    console.print("[dim]Recommendations for better organization:[/dim]")
+                    for rec in analysis.recommendations:
+                        console.print(f"  • [dim]{rec}[/dim]")
+                    console.print()
             
             from src.core.services.data_loader_service import create_data_loader
             
@@ -306,6 +375,39 @@ Type 'quit' or 'q' at any time to exit.
 [bold]Loaded:[/bold] {summary['loaded_at']}
         """
         console.print(Panel(info.strip(), title="Dataset Summary", box=box.ROUNDED))
+    
+    def _show_structure_analysis(self, analysis):
+        """Display directory structure analysis results."""
+        from src.core.services.data_structure_detector import DirectoryStructureType
+        
+        # Create a summary table
+        table = Table(box=box.SIMPLE, show_header=False)
+        table.add_column("Property", style="cyan")
+        table.add_column("Value")
+        
+        # Structure type with color coding
+        structure_name = analysis.structure_type.value.replace('_', ' ').title()
+        if analysis.structure_type == DirectoryStructureType.NESTED_BUILDING_CLIMATE_SENSORS:
+            structure_display = f"[green]{structure_name}[/green] ✓"
+        elif analysis.confidence >= 0.7:
+            structure_display = f"[yellow]{structure_name}[/yellow]"
+        else:
+            structure_display = f"[red]{structure_name}[/red]"
+        
+        table.add_row("Structure Type", structure_display)
+        table.add_row("Confidence", f"{analysis.confidence:.0%}")
+        table.add_row("Buildings Detected", str(analysis.building_count))
+        table.add_row("Sensor Files", str(analysis.total_sensor_files))
+        table.add_row("Climate Data", "Yes ✓" if analysis.has_climate_data else "No")
+        
+        console.print("\n")
+        console.print(table)
+        
+        # Show additional details if available
+        if analysis.details:
+            if 'structure' in analysis.details:
+                console.print(f"\n[dim]Pattern: {analysis.details['structure']}[/dim]")
+
     
     def _launch_explorer(self):
         """Launch the interactive data explorer."""
@@ -570,10 +672,8 @@ Type 'quit' or 'q' at any time to exit.
 
 
 def launch_interactive_workflow(
-    dataset: Optional[BuildingDataset] = None,
-    dataset_file: Optional[Path] = None,
+    data_directory: Optional[Path] = None,
     auto_mode: bool = False,
-    analysis_dir: Optional[Path] = None,
 ):
     """
     Launch the interactive workflow.
@@ -585,7 +685,7 @@ def launch_interactive_workflow(
     """
     workflow = InteractiveWorkflow(auto_mode=auto_mode)
     # Allow callers to provide an existing analysis directory
-    if analysis_dir is not None:
-        workflow.analysis_dir = analysis_dir
+    if data_directory is not None:
+        workflow.data_directory = data_directory
 
-    workflow.start(dataset=dataset, dataset_file=dataset_file)
+    workflow.start()

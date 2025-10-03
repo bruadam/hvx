@@ -23,11 +23,11 @@ from rich.prompt import Prompt, Confirm
 from rich.text import Text
 from rich import box
 
-from src.core.models.analysis_models import (
+from src.core.models import (
     PortfolioAnalysis, BuildingAnalysis, LevelAnalysis, RoomAnalysis,
-    TestResult, AnalysisSeverity
+    TestResult, Severity
 )
-from src.core.models.building_data import BuildingDataset
+from src.core.models import BuildingDataset
 
 console = Console()
 
@@ -902,7 +902,7 @@ Browse hierarchical analysis results: portfolio → buildings → levels → roo
             room_file = rooms_dir / f"{room_id}.json"
             if room_file.exists():
                 try:
-                    from src.core.models.analysis_models import RoomAnalysis
+                    from src.core.models import RoomAnalysis
                     room = RoomAnalysis.load_from_json(room_file)
                     
                     # Check if this room has results for the selected test
@@ -1559,7 +1559,7 @@ Browse hierarchical analysis results: portfolio → buildings → levels → roo
     def _show_portfolio_recommendations(self, buildings: List[BuildingAnalysis]):
         """Show smart recommendations at portfolio level."""
         from src.core.services.smart_recommendations_service import generate_building_recommendations_report
-        from src.core.models.analysis_models import RoomAnalysis
+        from src.core.models import RoomAnalysis
         
         console.print("\n[bold cyan]═══ Smart Recommendations Report ═══[/bold cyan]\n")
         console.print("[dim]Generating recommendations... (analyzing all rooms)[/dim]\n")
@@ -1625,7 +1625,7 @@ Browse hierarchical analysis results: portfolio → buildings → levels → roo
             return
         
         from src.core.services.smart_recommendations_service import generate_building_recommendations_report
-        from src.core.models.analysis_models import RoomAnalysis
+        from src.core.models import RoomAnalysis
         
         console.print(f"\n[bold cyan]═══ Smart Recommendations: {self.current_building.building_name} ═══[/bold cyan]\n")
         console.print("[dim]Generating recommendations...[/dim]\n")
@@ -2074,7 +2074,7 @@ Browse hierarchical analysis results: portfolio → buildings → levels → roo
             return
         
         from src.core.services.smart_recommendations_service import generate_building_recommendations_report
-        from src.core.models.analysis_models import RoomAnalysis
+        from src.core.models import RoomAnalysis
         
         # Load room analyses for this building
         room_analyses = {}

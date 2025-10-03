@@ -15,12 +15,14 @@ import pandas as pd
 import numpy as np
 import yaml
 
-from src.core.models.building_data import BuildingDataset, Building, Level, Room, TimeSeriesData
-from src.core.models.analysis_models import (
+from src.core.models import (
+    BuildingDataset, Building, Level, Room, TimeSeriesData,
     RoomAnalysis, LevelAnalysis, BuildingAnalysis, PortfolioAnalysis,
-    AnalysisResults, TestResult, AnalysisSeverity, AnalysisStatus
+    AnalysisResults, TestResult, Severity, Status
 )
-from src.core.analytics_engine import UnifiedAnalyticsEngine, AnalysisType, UnifiedFilterProcessor
+from src.core.analysis.ieq.AnalysisEngine import AnalysisEngine
+from src.core.analysis.ieq.types import Method
+from src.core.analysis.ieq.FilterProcessor import FilterProcessor
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +42,7 @@ class HierarchicalAnalysisService:
         self.config = self._load_config()
         self.analytics_engine = None
         # Initialize filter processor with config
-        self.filter_processor = UnifiedFilterProcessor(self.config)
+        self.filter_processor = FilterProcessor(self.config)
         # Cache for warnings to display at end
         self.filter_warnings = []  # List of (room_name, room_id, filter_name, test_name, reason) tuples
     
@@ -350,18 +352,18 @@ class HierarchicalAnalysisService:
             logger.error(f"Error evaluating test {test_name}: {e}")
             return None
     
-    def _determine_severity(self, compliance_rate: float, non_compliant_hours: int) -> AnalysisSeverity:
+    def _determine_severity(self, compliance_rate: float, non_compliant_hours: int) -> Severity:
         """Determine severity level based on compliance."""
         if compliance_rate >= 95:
-            return AnalysisSeverity.INFO
+            return Severity.INFO
         elif compliance_rate >= 85:
-            return AnalysisSeverity.LOW
+            return Severity.LOW
         elif compliance_rate >= 70:
-            return AnalysisSeverity.MEDIUM
+            return Severity.MEDIUM
         elif compliance_rate >= 50:
-            return AnalysisSeverity.HIGH
+            return Severity.HIGH
         else:
-            return AnalysisSeverity.CRITICAL
+            return Severity.CRITICAL
     
     def _generate_test_recommendations(
         self,
@@ -411,7 +413,7 @@ class HierarchicalAnalysisService:
         issues = []
         
         for result in analysis.test_results.values():
-            if result.severity in [AnalysisSeverity.CRITICAL, AnalysisSeverity.HIGH]:
+            if result.severity in [Severity.CRITICAL, Severity.HIGH]:
                 if result.compliance_rate < 50:
                     issues.append(
                         f"{result.parameter.upper()}: {result.description} - "
@@ -437,7 +439,7 @@ class HierarchicalAnalysisService:
         Returns:
             Tuple of (correlations dict, weather stats dict)
         """
-        from src.core.models.building_data import ClimateData
+        from src.core.models import ClimateData
         
         correlations = {}
         weather_stats = {}
@@ -615,7 +617,7 @@ class HierarchicalAnalysisService:
         )
         
         if not level_room_analyses:
-            analysis.status = AnalysisStatus.FAILED
+            analysis.status = Status.FAILED
             return analysis
         
         # Aggregate compliance and quality scores
@@ -699,7 +701,7 @@ class HierarchicalAnalysisService:
         )
         
         if not building_room_analyses:
-            analysis.status = AnalysisStatus.FAILED
+            analysis.status = Status.FAILED
             return analysis
         
         # Aggregate metrics
@@ -775,7 +777,7 @@ class HierarchicalAnalysisService:
         )
         
         if not building_list:
-            analysis.status = AnalysisStatus.FAILED
+            analysis.status = Status.FAILED
             return analysis
         
         # Aggregate metrics

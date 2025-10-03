@@ -1,0 +1,11 @@
+description: Evening (16-21), weekdays, excludes school holidays
+hours:
+  - 16
+  - 17
+  - 18
+  - 19
+  - 20
+  - 21
+weekdays_only: true
+exclude_holidays: true
+exclude_custom_holidays: true

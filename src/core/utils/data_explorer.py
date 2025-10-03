@@ -19,7 +19,7 @@ from rich import box
 import pandas as pd
 import matplotlib.pyplot as plt
 
-from src.core.models.building_data import BuildingDataset, Building, Level, Room, TimeSeriesData
+from src.core.models import BuildingDataset, Building, Level, Room, TimeSeriesData
 
 console = Console()
 

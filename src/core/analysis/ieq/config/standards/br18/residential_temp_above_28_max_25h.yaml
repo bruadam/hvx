@@ -1,0 +1,10 @@
+description: BR18 Residential - Max 25h/year >28°C (natural ventilation, all hours)
+feature: temperature
+period: all_year
+filter: all_hours
+mode: unidirectional_ascending
+limit: 28
+max_exceedance_hours: 25
+regulation: BR18
+building_type: residential
+ventilation_type: natural

@@ -1,0 +1,9 @@
+description: "Humidity Category I compliance (opening hours)"
+feature: humidity
+filter: opening_hours
+period: all_year
+mode: bidirectional
+limits:
+  lower: 30
+  upper: 50
+category: EN16798-1

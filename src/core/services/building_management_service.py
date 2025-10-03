@@ -12,10 +12,10 @@ from datetime import datetime
 import pandas as pd
 import uuid
 
-from src.core.models.building_data import (
-    BuildingDataset, Building, Level, Room, TimeSeriesData, DataQuality
+from src.core.models import (
+    BuildingDataset, Building, Level, Room, TimeSeriesData, DataQuality,
+    RoomType
 )
-from src.core.models.enums import RoomType
 
 logger = logging.getLogger(__name__)
 

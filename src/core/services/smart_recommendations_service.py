@@ -14,7 +14,7 @@ from typing import Dict, List, Any, Optional, Tuple
 from dataclasses import dataclass, field
 from enum import Enum
 
-from src.core.models.analysis_models import RoomAnalysis, TestResult, AnalysisSeverity
+from src.core.models import RoomAnalysis, TestResult, Severity
 
 logger = logging.getLogger(__name__)
 
