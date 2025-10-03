@@ -2,8 +2,8 @@
 Test script for IEQ configuration loader
 """
 
-from src.core.utils.config_loader import load_ieq_config, load_ieq_standard, get_ieq_config_base_path
-from src.core.analysis.ieq.config_loader import IEQConfigLoader
+from src.core.analytics.config_loader import load_ieq_config, load_ieq_standard, get_ieq_config_base_path
+from src.core.analytics.ieq.config_loader import IEQConfigLoader
 import json
 
 

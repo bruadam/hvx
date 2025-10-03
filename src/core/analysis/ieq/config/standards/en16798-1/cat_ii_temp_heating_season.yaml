@@ -1,9 +1,0 @@
-description: "Temperature Category II compliance during heating season (opening hours)"
-feature: temperature
-filter: opening_hours
-period: heating_season
-mode: bidirectional
-limits:
-  lower: 20
-  upper: 24
-category: EN16798-1

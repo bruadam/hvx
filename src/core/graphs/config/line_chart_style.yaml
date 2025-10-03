@@ -1,0 +1,106 @@
+# Line Chart Specific Configuration
+
+# Figure settings
+figure:
+  figsize: [14, 7]
+  dpi: 300
+
+# Line settings
+lines:
+  linewidth: 2.5
+  alpha: 0.9
+  marker: null  # null, 'o', 's', '^', etc.
+  markersize: 5
+  markeredgewidth: 1
+  markerfacecolor: auto  # auto uses line color
+
+  # Line styles for different series
+  styles:
+    - solid: '-'
+    - dashed: '--'
+    - dashdot: '-.'
+    - dotted: ':'
+
+  # Colors for multiple lines
+  colors:
+    - '#3498db'  # Blue
+    - '#e74c3c'  # Red
+    - '#2ecc71'  # Green
+    - '#f39c12'  # Orange
+    - '#9b59b6'  # Purple
+    - '#1abc9c'  # Turquoise
+
+# Moving average settings
+moving_average:
+  enabled: false
+  window: 24  # Default window size
+  linewidth: 1.8
+  linestyle: '--'
+  color: '#e74c3c'
+  alpha: 0.7
+  label_format: '{window}h MA'
+
+# Target bands/zones
+target_bands:
+  enabled: true
+  alpha: 0.15
+  color: '#d5f4e6'
+  edgecolor: none
+  label: 'Target Range'
+
+# Threshold lines
+thresholds:
+  linewidth: 2
+  linestyle: '--'
+  alpha: 0.6
+  colors:
+    upper: '#e74c3c'  # Red for upper limits
+    lower: '#3498db'  # Blue for lower limits
+  label_format: '{name}: {value}'
+
+# Fill between lines (e.g., confidence intervals)
+fill_between:
+  alpha: 0.2
+  color: auto  # auto uses line color
+
+# Time series specific settings
+timeseries:
+  # Date formatting
+  date_format: '%Y-%m-%d %H:%M'
+  date_rotation: 45
+
+  # Major/minor ticks
+  major_locator: auto  # auto, hourly, daily, weekly, monthly
+  minor_locator: auto
+
+  # Grid for time axis
+  time_grid:
+    major:
+      alpha: 0.4
+      linewidth: 1
+    minor:
+      alpha: 0.2
+      linewidth: 0.5
+
+# Annotations
+annotations:
+  fontsize: 9
+  bbox:
+    boxstyle: round,pad=0.3
+    facecolor: yellow
+    alpha: 0.3
+
+# Multiple Y-axes settings (for dual-axis charts)
+dual_axis:
+  enabled: false
+  y2_color: '#e74c3c'
+  y2_label: ''
+
+# Scatter overlay (for showing data points)
+scatter:
+  enabled: false
+  marker: 'o'
+  size: 30
+  alpha: 0.6
+  edgecolor: white
+  linewidth: 1

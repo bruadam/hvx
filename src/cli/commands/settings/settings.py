@@ -26,10 +26,10 @@ def graphs():
 def list_graphs():
     """List available graph configurations."""
     try:
-        from src.core.services.graph_service import GraphService
+        from src.core.graphs.GraphService import GraphService
 
         service = GraphService()
-        graph_configs = service.list_graph_configs()
+        graph_configs = service.list_available_charts()
 
         if not graph_configs:
             console.print("[yellow]No graph configurations found[/yellow]")
@@ -52,10 +52,10 @@ def list_graphs():
 def show_graph(config_name: str):
     """Show details of a graph configuration."""
     try:
-        from src.core.services.graph_service import GraphService
+        from src.core.graphs.GraphService import GraphService
 
         service = GraphService()
-        config = service.get_graph_config(config_name)
+        config = service.get_chart_info(config_name)
 
         if not config:
             console.print(f"[red]Graph configuration '{config_name}' not found[/red]")
@@ -84,7 +84,7 @@ def templates():
 def list_templates():
     """List available report templates."""
     try:
-        from src.core.services.report_template_service import ReportTemplateService
+        from src.core.reporting.report_template_service import ReportTemplateService
 
         service = ReportTemplateService()
         template_list = service.list_templates()
@@ -96,10 +96,10 @@ def list_templates():
 
         console.print("\n[bold cyan]Available Report Templates:[/bold cyan]\n")
         for template in template_list:
-            console.print(f"  • [green]{template.name}[/green]")
+            console.print(f"  • [green]{template.name}[/green] ({template.template_id})")
             if template.description:
                 console.print(f"    [dim]{template.description}[/dim]")
-            console.print(f"    [dim]Sections: {len(template.sections)}[/dim]")
+            console.print(f"    [dim]Level: {template.default_level.value} | Sections: {len(template.sections)}[/dim]")
         console.print()
 
     except Exception as e:
@@ -108,29 +108,48 @@ def list_templates():
 
 
 @templates.command(name='show')
-@click.argument('template_name')
-def show_template(template_name: str):
+@click.argument('template_id')
+def show_template(template_id: str):
     """Show details of a report template."""
     try:
-        from src.core.services.report_template_service import ReportTemplateService
+        from src.core.reporting.report_template_service import ReportTemplateService
 
         service = ReportTemplateService()
-        template = service.load_template(template_name)
+        template = service.load_template(template_id)
 
         if not template:
-            console.print(f"[red]Template '{template_name}' not found[/red]")
+            console.print(f"[red]Template '{template_id}' not found[/red]")
             raise click.Abort()
 
-        console.print(f"\n[bold cyan]Template: {template.name}[/bold cyan]\n")
+        console.print(f"\n[bold cyan]Template: {template.name}[/bold cyan] ({template.template_id})\n")
         console.print(f"[bold]Description:[/bold] {template.description}")
-        console.print(f"[bold]Scope:[/bold] {template.scope}")
+        console.print(f"[bold]Default Level:[/bold] {template.default_level.value}")
+        console.print(f"[bold]Output Format:[/bold] {template.output_format}")
+        console.print(f"[bold]Page Size:[/bold] {template.page_size} ({template.orientation})")
+
+        if template.author:
+            console.print(f"[bold]Author:[/bold] {template.author}")
+        if template.created_date:
+            console.print(f"[bold]Created:[/bold] {template.created_date}")
+
         console.print(f"\n[bold]Sections ({len(template.sections)}):[/bold]")
 
         for i, section in enumerate(template.sections, 1):
-            console.print(f"  {i}. [green]{section.title}[/green]")
-            console.print(f"     Type: {section.section_type}")
-            if section.content_config:
-                console.print(f"     Config keys: {', '.join(section.content_config.keys())}")
+            console.print(f"  {i}. [green]{section.section_id}[/green]")
+            console.print(f"     Type: {section.section_type.value}")
+            console.print(f"     Enabled: {section.enabled}")
+
+            # Show specific section details
+            if section.summary:
+                console.print(f"     Level: {section.summary.level.value}")
+            elif section.graph:
+                console.print(f"     Graph: {section.graph.graph_type}")
+            elif section.table:
+                console.print(f"     Table: {section.table.table_type}")
+            elif section.text:
+                console.print(f"     Heading: {section.text.heading or 'N/A'}")
+            elif section.loop:
+                console.print(f"     Loop over: {section.loop.loop_over.value} ({len(section.loop.sections)} subsections)")
         console.print()
 
     except Exception as e:
@@ -139,79 +158,51 @@ def show_template(template_name: str):
 
 
 @templates.command(name='create')
-@click.argument('template_name')
-@click.option('--scope', type=click.Choice(['building', 'level', 'room', 'portfolio']),
-              default='building', help='Template scope')
+@click.argument('template_id')
+@click.option('--name', help='Template display name')
+@click.option('--level', type=click.Choice(['building', 'level', 'room', 'portfolio']),
+              default='building', help='Default analysis level')
 @click.option('--description', help='Template description')
-def create_template(template_name: str, scope: str, description: str):
-    """Create a new report template interactively."""
+@click.option('--standard', is_flag=True, help='Create standard building template')
+def create_template(template_id: str, name: str, level: str, description: str, standard: bool):
+    """Create a new report template."""
     try:
-        from src.core.services.report_template_service import ReportTemplateService
-
-        console.print(f"\n[bold cyan]Creating template: {template_name}[/bold cyan]\n")
+        from src.core.reporting.report_template_service import ReportTemplateService
+        from src.core.models import AnalysisLevel
+        from datetime import datetime
 
         service = ReportTemplateService()
 
         # Check if template already exists
-        if service.load_template(template_name):
-            console.print(f"[red]Template '{template_name}' already exists[/red]")
+        if service.load_template(template_id):
+            console.print(f"[red]Template '{template_id}' already exists[/red]")
             raise click.Abort()
 
-        # Create basic template structure
-        from src.core.models.report_template import ReportTemplate, TemplateSection
+        console.print(f"\n[bold cyan]Creating template: {template_id}[/bold cyan]\n")
 
-        template = ReportTemplate(
-            name=template_name,
-            scope=scope,
-            description=description or f"{template_name} report template",
-            sections=[]
-        )
-
-        # Add default sections based on scope
-        if scope == 'building':
-            template.sections = [
-                TemplateSection(
-                    title="Executive Summary",
-                    section_type="summary",
-                    content_config={"include_metrics": True}
-                ),
-                TemplateSection(
-                    title="Compliance Overview",
-                    section_type="compliance",
-                    content_config={}
-                ),
-                TemplateSection(
-                    title="Recommendations",
-                    section_type="recommendations",
-                    content_config={}
-                )
-            ]
-        elif scope == 'portfolio':
-            template.sections = [
-                TemplateSection(
-                    title="Portfolio Overview",
-                    section_type="summary",
-                    content_config={"include_metrics": True}
-                ),
-                TemplateSection(
-                    title="Building Rankings",
-                    section_type="rankings",
-                    content_config={}
-                ),
-                TemplateSection(
-                    title="Investment Priorities",
-                    section_type="priorities",
-                    content_config={}
-                )
-            ]
+        # Create standard template or basic template
+        if standard:
+            template = service.create_standard_building_template()
+            template.template_id = template_id
+            template.name = name or template_id.replace('_', ' ').title()
+            if description:
+                template.description = description
+        else:
+            template = service.create_basic_template(
+                template_id=template_id,
+                name=name or template_id.replace('_', ' ').title(),
+                description=description or f"{template_id} report template"
+            )
+            template.default_level = AnalysisLevel(level)
 
         # Save template
         service.save_template(template)
 
-        console.print(f"[green]✓[/green] Template created: [cyan]{template_name}[/cyan]")
-        console.print(f"  Scope: {scope}")
+        console.print(f"[green]✓[/green] Template created: [cyan]{template.name}[/cyan]")
+        console.print(f"  ID: {template.template_id}")
+        console.print(f"  Level: {template.default_level.value}")
         console.print(f"  Sections: {len(template.sections)}")
-        console.print(f"\nView with: [dim]hvx settings templates show {template_name}[/dim]\n")
+        console.print(f"\nView with: [dim]hvx settings templates show {template_id}[/dim]\n")
 
     except Exception as e:
         console.print(f"[red]Error:[/red] {str(e)}")
@@ -219,21 +210,21 @@ def create_template(template_name: str, scope: str, description: str):
 
 
 @templates.command(name='delete')
-@click.argument('template_name')
+@click.argument('template_id')
 @click.confirmation_option(prompt='Are you sure you want to delete this template?')
-def delete_template(template_name: str):
+def delete_template(template_id: str):
     """Delete a report template."""
     try:
-        from src.core.services.report_template_service import ReportTemplateService
+        from src.core.reporting.report_template_service import ReportTemplateService
 
         service = ReportTemplateService()
 
-        if not service.load_template(template_name):
-            console.print(f"[red]Template '{template_name}' not found[/red]")
+        if not service.load_template(template_id):
+            console.print(f"[red]Template '{template_id}' not found[/red]")
             raise click.Abort()
 
-        service.delete_template(template_name)
-        console.print(f"[green]✓[/green] Template deleted: {template_name}\n")
+        service.delete_template(template_id)
+        console.print(f"[green]✓[/green] Template deleted: {template_id}\n")
 
     except Exception as e:
         console.print(f"[red]Error:[/red] {str(e)}")

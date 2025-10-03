@@ -1,9 +1,0 @@
-description: Danish school temperature comfort guidelines
-feature: temperature
-filter: opening_hours
-period: all_year
-mode: bidirectional
-limits:
-  lower: 20
-  upper: 26
-category: Danish Guidelines

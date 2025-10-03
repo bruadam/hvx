@@ -1,0 +1,76 @@
+graphs:
+  - id: performance_overview
+    name: Overall Performance Overview
+    description: High-level overview of performance metrics across all buildings
+    category: performance
+    type: compliance_chart
+    fixture: sample_performance_overview.json
+    parameters:
+      - name: metrics
+        type: list
+        default: ["co2_compliance", "temperature_compliance", "comfort_score"]
+        description: Metrics to display
+      - name: co2_threshold
+        type: number
+        default: 1000
+        description: CO2 threshold in ppm
+      - name: temp_min
+        type: number
+        default: 20
+        description: Minimum comfort temperature
+      - name: temp_max
+        type: number
+        default: 26
+        description: Maximum comfort temperature
+
+  - id: building_comparison
+    name: Building Performance Comparison
+    description: Comparative bar chart showing performance across buildings
+    category: performance
+    type: bar_chart
+    fixture: sample_building_comparison.json
+    parameters:
+      - name: metrics
+        type: list
+        default: ["co2_avg", "temperature_avg", "compliance_rate"]
+        description: Metrics to compare
+      - name: chart_type
+        type: string
+        default: bar
+        description: Type of comparison chart
+
+  - id: building_performance
+    name: Building Performance Metrics
+    description: Detailed performance metrics for a specific building
+    category: performance
+    type: compliance_chart
+    fixture: sample_building_performance.json
+    parameters:
+      - name: metrics
+        type: list
+        default: ["co2_compliance", "temperature_compliance"]
+        description: Performance metrics
+      - name: periods
+        type: list
+        default: ["all_year", "opening_hours", "non_opening_hours"]
+        description: Time periods to analyze
+
+  - id: top_issues_rooms
+    name: Rooms with Most Issues
+    description: Ranking of rooms by number of violations
+    category: performance
+    type: bar_chart
+    fixture: sample_top_issues.json
+    parameters:
+      - name: ranking_by
+        type: list
+        default: ["co2_violations", "temperature_violations"]
+        description: Metrics to rank by
+      - name: top_n
+        type: number
+        default: 10
+        description: Number of top rooms to show
+      - name: chart_type
+        type: string
+        default: horizontal_bar
+        description: Chart orientation

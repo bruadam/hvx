@@ -1,0 +1,16 @@
+graphs:
+  - id: occupancy_heatmap
+    name: Occupancy Heatmap
+    description: Heatmap showing occupancy patterns by hour and day
+    category: occupancy
+    type: heatmap
+    fixture: sample_occupancy.json
+    parameters:
+      - name: color_scheme
+        type: string
+        default: viridis
+        description: Color scheme for heatmap
+      - name: normalize
+        type: boolean
+        default: false
+        description: Normalize values to 0-1 range

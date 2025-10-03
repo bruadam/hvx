@@ -12,55 +12,45 @@ console = Console()
 
 
 @click.command(name='start')
-@click.option('--dataset', '-d', type=click.Path(exists=True, path_type=Path),
-              help='Path to existing dataset pickle file (skip loading step)')
-@click.option('--analysis', '-a', type=click.Path(exists=True, path_type=Path),
-              help='Path to existing analysis directory (skip analysis step)')
-def start(dataset: Optional[Path], analysis: Optional[Path]):
+@click.option('--directory', '-d', type=click.Path(exists=True, path_type=Path),
+              help='Path to existing data directory')
+@click.option('--auto', '-a', is_flag=True,
+              help='Run in auto mode with default values')
+
+def start(directory: Optional[Path], auto: bool):
     """
     Start a new IEQ analysis project interactively.
 
-    This interactive workflow guides you through the complete analysis pipeline:
-    1. Loading building data (or use existing dataset)
-    2. Running hierarchical analysis (or use existing analysis)
-    3. Exploring results interactively
-    4. Generating custom reports
+    This interactive workflow guides you through the complete analysis pipeline
+    following INSTRUCTIONS.md:
+
+    1. Ask for and load building data from directory
+    2. Select standards, tests & guidelines to apply
+    3. Process analytics
+    4. Explore results interactively
+    5. Generate reports (with template selection)
+    6. Export analytics data in various formats
+    7. Exit workflow
 
     Examples:
 
     \b
-        # Start from beginning (load data)
+        # Start interactive workflow
         hvx ieq start
 
-        # Start with existing dataset
-        hvx ieq start --dataset output/dataset.pkl
+        # Start with specific data directory
+        hvx ieq start --directory data/myproject
 
-        # Start with existing analysis
-        hvx ieq start --analysis output/analysis
+        # Run in auto mode (use defaults)
+        hvx ieq start --auto
     """
-    from src.core.utils.interactive_workflow import launch_interactive_workflow
-    from src.core.models.building_data import BuildingDataset
-
-    console.print(Panel.fit(
-        "[bold cyan]HVX - IEQ Analysis[/bold cyan]\n"
-        "Interactive end-to-end building performance analysis",
-        border_style="cyan"
-    ))
+    from src.cli.ui.workflows.interactive_workflow import launch_interactive_workflow
 
     try:
-        # Load dataset if provided
-        dataset_obj = None
-        if dataset:
-            console.print(f"\n[bold]Loading dataset from:[/bold] {dataset}")
-            dataset_obj = BuildingDataset.load_from_pickle(dataset)
-            console.print(f"[green]✓[/green] Loaded {dataset_obj.get_building_count()} buildings\n")
-
         # Launch workflow
         launch_interactive_workflow(
-            auto_mode=True,    
-            dataset=dataset_obj,
-            dataset_file=dataset,
-            analysis_dir=analysis
+            data_directory=directory if directory else None,
+            auto_mode=auto
         )
 
     except KeyboardInterrupt:

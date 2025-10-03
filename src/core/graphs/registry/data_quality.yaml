@@ -1,0 +1,28 @@
+graphs:
+  - id: data_completeness
+    name: Data Completeness by Building
+    description: Heatmap showing data completeness across buildings and time
+    category: data_quality
+    type: heatmap
+    fixture: sample_data_completeness.json
+    parameters:
+      - name: time_resolution
+        type: string
+        default: daily
+        description: Time resolution for completeness check
+      - name: color_scheme
+        type: string
+        default: RdYlGn
+        description: Color scheme for heatmap
+
+  - id: data_quality_table
+    name: Data Quality Summary
+    description: Table view of data quality metrics per building
+    category: data_quality
+    type: table
+    fixture: sample_data_quality_table.json
+    parameters:
+      - name: columns
+        type: list
+        default: ["building", "data_completeness", "missing_periods", "quality_score"]
+        description: Columns to display

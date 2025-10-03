@@ -1,0 +1,9 @@
+description: Danish school CO2 guidelines
+feature: co2
+filter: opening_hours
+period: all_year
+mode: unidirectional_ascending
+limit: 1000
+category: Danish Guidelines
+building_types: [school]
+room_types: [classroom, library, auditorium]

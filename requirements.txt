@@ -15,8 +15,6 @@ json-logic
 pyyaml
 holidays
 rich
-weasyprint
-jinja2
 mistralai
 python-dotenv
 plotly
@@ -25,3 +23,4 @@ flask-cors
 requests
 streamlit
 inquirer
+pytest

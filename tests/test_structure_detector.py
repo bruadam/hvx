@@ -11,7 +11,7 @@ from rich.console import Console
 from rich.table import Table
 from rich import box
 
-from src.core.services.data_structure_detector import create_structure_detector
+from src.core.parsers.DataStructureDetector import create_structure_detector
 
 console = Console()
 

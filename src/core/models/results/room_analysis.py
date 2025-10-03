@@ -49,6 +49,10 @@ class RoomAnalysis(BaseModel):
     critical_issues: List[str] = Field(default_factory=list, description="Critical issues found")
     recommendations: List[str] = Field(default_factory=list, description="Overall recommendations")
 
+    # EN16798-1 Category assignment
+    en16798_category: Optional[str] = Field(None, description="Assigned EN16798-1 category (Cat I/II/III/IV)")
+    en16798_category_confidence: Optional[float] = Field(None, description="Confidence in category assignment (0-100)", ge=0, le=100)
+
     # Metadata
     metadata: Dict[str, Any] = Field(default_factory=dict, description="Additional metadata")
 

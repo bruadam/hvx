@@ -9,7 +9,7 @@ __version__ = "0.1.0"
 __author__ = "Bruno Adam"
 
 # Core analytics
-from src.core import UnifiedAnalyticsEngine
+from src.core.analytics.ieq import AnalysisEngine
 
 # Services
 from src.core.services import (
@@ -20,7 +20,7 @@ from src.core.services import (
 )
 
 __all__ = [
-    "UnifiedAnalyticsEngine",
+    "AnalysisEngine",
     "GraphService",
     "TemplateService",
     "AnalyticsService",
