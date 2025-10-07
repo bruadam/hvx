@@ -37,6 +37,7 @@ report:
   subtitle: "Detailed IEQ Performance Analysis"
   format: html
   theme: modern
+  scope: building  # building | portfolio - determines if one report per building
 
 page:
   size: A4
@@ -210,7 +211,7 @@ sections:
 
   - section_id: room_details
     type: loop
-    title: "Room-by-Room Analysis"
+    title: "Detailed Room-by-Room Analysis"
     # Analytics requirements for this section
     analytics_requirements:
       analytics_tags:
@@ -218,31 +219,11 @@ sections:
         - statistics.basic
         - compliance.overall
     loop_over: rooms
+    view_type: cards  # Use detailed card view instead of table
     max_iterations: 20
     sort_by: compliance_rate
-    sort_order: ascending
-    subsections:
-      - section_id: room_header
-        type: text
-        content: "## {room_name}"
+    sort_order: ascending  # Show worst performing rooms first
 
-      - section_id: room_summary
-        type: summary
-        content:
-          - room_metrics
-          - compliance_rate
-          - critical_issues
-
-      - section_id: room_charts
-        type: charts
-        charts:
-          - id: room_temperature_co2
-            title: "Room Trends"
-            width: full
-
-      - section_id: room_recommendations
-        type: recommendations
-        max_recommendations: 3
 
 style:
   primary_color: "#1976D2"

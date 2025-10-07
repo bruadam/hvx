@@ -72,19 +72,21 @@ class UnifiedReportService:
         weather_data: Any = None,
         format: str = 'html',
         output_filename: Optional[str] = None,
-        skip_validation: bool = False
+        skip_validation: bool = False,
+        generate_per_building: bool = True
     ) -> Dict[str, Any]:
         """
         Generate report from template with analytics validation.
 
         Args:
             template_name: Name of YAML template (without .yaml extension)
-            analysis_results: HierarchicalAnalysisResult object
+            analysis_results: HierarchicalAnalysisResult object or AnalysisResults
             dataset: BuildingDataset object (optional, needed for missing analytics)
             weather_data: Weather DataFrame (optional)
             format: Output format ('html', 'pdf', or 'both')
             output_filename: Custom output filename (optional)
             skip_validation: Skip analytics validation (not recommended)
+            generate_per_building: Generate one report per building for building-level templates
 
         Returns:
             Dictionary with generation results including validation info
@@ -99,6 +101,153 @@ class UnifiedReportService:
         with open(config_path, 'r') as f:
             template_config = yaml.safe_load(f)
         
+        # Check if this is a building-level template and we have multiple buildings
+        template_scope = template_config.get('report', {}).get('scope', 'building')
+        
+        if (
+            generate_per_building and 
+            template_scope == 'building' and 
+            hasattr(analysis_results, 'buildings') and 
+            len(analysis_results.buildings) > 1
+        ):
+            # Generate one report per building
+            logger.info(f"Detected {len(analysis_results.buildings)} buildings - generating separate reports")
+            return self._generate_multiple_building_reports(
+                template_name=template_name,
+                config_path=config_path,
+                template_config=template_config,
+                analysis_results=analysis_results,
+                dataset=dataset,
+                weather_data=weather_data,
+                format=format,
+                skip_validation=skip_validation
+            )
+        
+        # Single building or portfolio report - use standard generation
+        result = self._generate_single_report(
+            template_name=template_name,
+            config_path=config_path,
+            template_config=template_config,
+            analysis_results=analysis_results,
+            dataset=dataset,
+            weather_data=weather_data,
+            format=format,
+            output_filename=output_filename,
+            skip_validation=skip_validation
+        )
+        
+        # Display CLI warnings for missing implementations (if any)
+        if self.enable_validation and self.orchestrator:
+            self.orchestrator.print_missing_implementations_warning()
+        
+        return result
+
+    def _generate_multiple_building_reports(
+        self,
+        template_name: str,
+        config_path: Path,
+        template_config: Dict[str, Any],
+        analysis_results: Any,
+        dataset: Any,
+        weather_data: Any,
+        format: str,
+        skip_validation: bool
+    ) -> Dict[str, Any]:
+        """
+        Generate one report per building when multiple buildings exist.
+        
+        Args:
+            template_name: Template name
+            config_path: Path to template config
+            template_config: Template configuration dict
+            analysis_results: Analysis results with multiple buildings
+            dataset: Dataset
+            weather_data: Weather data
+            format: Output format
+            skip_validation: Skip validation flag
+            
+        Returns:
+            Dictionary with all generated reports
+        """
+        from src.core.models.results.analysis_results import AnalysisResults
+        
+        generated_reports = []
+        buildings = analysis_results.buildings
+        
+        logger.info(f"Generating {len(buildings)} building reports...")
+        
+        for building_id, building_analysis in buildings.items():
+            logger.info(f"Generating report for building: {building_analysis.building_name}")
+            
+            # Create a single-building analysis results object
+            # For building-scoped reports, pass the BuildingAnalysis object directly
+            # This allows the renderer to access building-level data directly
+            
+            # Generate custom filename including building name
+            building_name_safe = building_analysis.building_name.replace(' ', '_').replace('/', '_')
+            custom_filename = f"{template_name}_{building_name_safe}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+            
+            try:
+                # Call the standard generate_report but disable per-building generation to avoid recursion
+                # Pass the BuildingAnalysis object directly instead of wrapped in HierarchicalAnalysisResult
+                report_result = self._generate_single_report(
+                    template_name=template_name,
+                    config_path=config_path,
+                    template_config=template_config,
+                    analysis_results=building_analysis,  # Pass BuildingAnalysis directly
+                    dataset=dataset,
+                    weather_data=weather_data,
+                    format=format,
+                    output_filename=custom_filename,
+                    skip_validation=skip_validation
+                )
+                
+                report_result['building_id'] = building_id
+                report_result['building_name'] = building_analysis.building_name
+                generated_reports.append(report_result)
+                
+            except Exception as e:
+                logger.error(f"Error generating report for building {building_analysis.building_name}: {e}")
+                generated_reports.append({
+                    'building_id': building_id,
+                    'building_name': building_analysis.building_name,
+                    'status': 'error',
+                    'error': str(e)
+                })
+        
+        # Return summary of all generated reports
+        successful = [r for r in generated_reports if r.get('status') == 'success']
+        failed = [r for r in generated_reports if r.get('status') != 'success']
+        
+        return {
+            'status': 'success' if successful else 'error',
+            'template_name': template_name,
+            'format': format,
+            'total_buildings': len(buildings),
+            'successful_reports': len(successful),
+            'failed_reports': len(failed),
+            'reports': generated_reports,
+            'primary_outputs': [r.get('primary_output') for r in successful],
+            'generated_at': datetime.now().isoformat()
+        }
+    
+    def _generate_single_report(
+        self,
+        template_name: str,
+        config_path: Path,
+        template_config: Dict[str, Any],
+        analysis_results: Any,
+        dataset: Any,
+        weather_data: Any,
+        format: str,
+        output_filename: Optional[str],
+        skip_validation: bool
+    ) -> Dict[str, Any]:
+        """
+        Generate a single report (internal method used by both single and multi-building generation).
+        
+        This is the core report generation logic extracted from generate_report.
+        """
         # Validate and ensure analytics requirements
         validation_result = None
         if self.enable_validation and not skip_validation and self.validator:

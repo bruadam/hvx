@@ -14,6 +14,7 @@ report:
   subtitle: "IEQ Performance Analysis Report"
   format: html  # html or pdf
   theme: modern  # modern, classic, minimal
+  scope: portfolio  # portfolio | building - determines aggregation level
   logo_path: null  # Optional path to company logo
 
 # Page settings (for PDF)

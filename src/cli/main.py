@@ -57,6 +57,7 @@ def cli():
 # Import command groups
 from src.cli.commands import ieq, energy, settings
 from src.cli.commands.ieq.info import info as ieq_info
+from src.cli.commands.ieq.reports import reports as ieq_reports
 
 
 # ==========================================
@@ -71,6 +72,7 @@ def ieq_group():
 # Add IEQ subcommands
 ieq_group.add_command(ieq.start)
 ieq_group.add_command(ieq_info)
+ieq_group.add_command(ieq_reports)
 
 
 # ==========================================

@@ -4,7 +4,7 @@ Welcome to the HVX CLI documentation. This guide covers all available commands a
 
 ## Overview
 
-HVX is a command-line tool for analyzing Indoor Environmental Quality (IEQ) and energy efficiency data in buildings. It provides a comprehensive workflow from data loading through analysis to report generation.
+HVX is a command-line tool for analyzing Indoor Environmental Quality (IEQ) and energy efficiency data in buildings. It provides an interactive, guided workflow that walks you through the complete analysis process from data loading to professional report generation.
 
 ## Installation
 
@@ -19,102 +19,97 @@ hvx --version
 ## Quick Start
 
 ```bash
-# 1. Load building data
-hvx data load data/samples/sample-extensive-data -o output/dataset.pkl -f pickle
+# Start the interactive IEQ analysis workflow
+hvx ieq start
 
-# 2. Run hierarchical analysis
-hvx analyze run output/dataset.pkl --portfolio-name "My Portfolio"
+# Or start with a specific data directory
+hvx ieq start --directory data/samples/sample-extensive-data
 
-# 3. View analysis summary
-hvx analyze summary output/analysis
-
-# 4. Generate a report (if using older analytics workflow)
-hvx reports generate simple_report --data my_building
+# Run in automated mode (no prompts)
+hvx ieq start --directory data/my-buildings --auto
 ```
 
 ## Command Groups
 
-HVX organizes commands into logical groups:
+HVX organizes commands by domain:
 
-### [data](./data.md) - Data Loading & Management
-Load and inspect building sensor data from directory structures.
+### [ieq](./ieq.md) - Indoor Environmental Quality Analysis
+Interactive workflow for comprehensive IEQ analysis.
 
-- `hvx data load` - Load building data from directories
-- `hvx data inspect` - Inspect loaded datasets
+- `hvx ieq start` - Launch interactive IEQ analysis workflow
+- `hvx ieq start --directory <path>` - Start with specific data directory
+- `hvx ieq start --auto` - Run in automated mode with defaults
+- `hvx ieq info` - Display IEQ terminology and concepts
 
-### [analyze](./analyze.md) - Hierarchical Analysis
-Run comprehensive hierarchical analysis on building portfolios.
+### energy - Energy Efficiency Analysis
+Energy analysis commands (coming soon).
 
-- `hvx analyze run` - Run analysis at room, level, building, and portfolio levels
-- `hvx analyze summary` - Display analysis summaries
+- `hvx energy` - Energy efficiency analysis commands
 
-### [analytics](./analytics.md) - Legacy Analytics (Single Building)
-Run analytics on individual datasets (CSV files).
+### settings - Settings & Configuration
+Manage HVX settings and configurations.
 
-- `hvx analytics run` - Run analytics on a CSV file
-- `hvx analytics list` - List all saved analyses
-- `hvx analytics show` - Show analysis details
+- `hvx settings` - Configuration management
 
-### [graphs](./graphs.md) - Graph Library
-Discover and preview available charts.
+## Interactive Workflow
 
-- `hvx graphs list` - List available charts
-- `hvx graphs info` - Show chart details
-- `hvx graphs preview` - Generate chart previews with dummy data
-
-### [templates](./templates.md) - Template Management
-Manage report templates.
-
-- `hvx templates list` - List available templates
-- `hvx templates show` - Show template configuration
-- `hvx templates create` - Create new templates interactively
-- `hvx templates delete` - Delete user templates
-
-### [reports](./reports.md) - Report Generation
-Generate PDF reports from analysis data.
-
-- `hvx reports generate` - Generate PDF reports
-- `hvx reports list` - List generated reports
-
-## Workflow
-
-### Modern Workflow (Portfolio Analysis)
+The `hvx ieq start` command provides a guided, step-by-step workflow:
 
 ```
-Data Directory → Load → Dataset → Analyze → JSON Results → View Summaries
+Data Directory → Load → Standards Selection → Analysis → Exploration → Reports → Export
 ```
 
-1. **Load Data**: Load building data from structured directories
-   ```bash
-   hvx data load data/my-buildings -o output/dataset.pkl -f pickle
-   ```
+### Workflow Steps
 
-2. **Run Analysis**: Perform hierarchical analysis
-   ```bash
-   hvx analyze run output/dataset.pkl --portfolio-name "My Portfolio"
-   ```
+1. **Load Building Data**
+   - Point to your data directory
+   - System auto-detects building structure
+   - Validates data quality
 
-3. **View Results**: Explore analysis results
-   ```bash
-   hvx analyze summary output/analysis --level portfolio
-   hvx analyze summary output/analysis --level building --entity-id building-1
-   ```
+2. **Select Building Type**
+   - Office, school, residential, healthcare, or mixed
+   - Determines applicable standards
 
-### Legacy Workflow (Single Building)
+3. **Choose Standards & Tests**
+   - EN16798-1 (European standard with Categories I-IV)
+   - BR18 (Danish Building Regulations)
+   - Danish Guidelines
+   - Auto-selection based on building type
+   - Custom selection available
 
+4. **Process Analytics**
+   - Hierarchical analysis (portfolio → building → level → room)
+   - Compliance checking against selected standards
+   - Data quality scoring
+   - Issue identification
+
+5. **Explore Results**
+   - Interactive summary display
+   - Navigate through hierarchy
+   - View detailed metrics
+   - Smart recommendations
+
+6. **Generate Reports**
+   - Choose from predefined templates
+   - Create custom templates
+   - HTML and PDF output formats
+   - Professional formatting
+
+7. **Export Data**
+   - JSON (full structure)
+   - Excel/CSV (tabular data)
+   - Markdown (documentation)
+   - Text files
+
+### Automated Mode
+
+For scripting or CI/CD pipelines:
+
+```bash
+hvx ieq start --directory data/buildings --auto
 ```
-CSV Data → Analytics → JSON → Reports → PDF
-```
 
-1. **Run Analytics**: Analyze a single building's CSV data
-   ```bash
-   hvx analytics run data/building.csv --name my_building
-   ```
-
-2. **Generate Report**: Create PDF report
-   ```bash
-   hvx reports generate simple_report --data my_building
-   ```
+This runs the complete workflow with default settings and no user interaction.
 
 ## Data Format
 
@@ -150,49 +145,49 @@ timestamp,temperature,co2,humidity,occupancy
 
 ## Output Structure
 
+The interactive workflow generates a structured output directory:
+
 ```
 output/
-├── dataset.pkl              # Loaded dataset (binary)
-├── dataset.json            # Dataset summary (human-readable)
-├── analysis/               # Analysis results
+├── analysis/               # Analysis results (JSON)
 │   ├── portfolio.json     # Portfolio-level analysis
 │   ├── buildings/         # Building-level analyses
 │   │   ├── building-1.json
 │   │   └── building-2.json
 │   ├── levels/            # Level-level analyses
-│   │   ├── level-1-0.json
-│   │   └── level-1-1.json
+│   │   └── *.json
 │   └── rooms/             # Room-level analyses
-│       ├── room-1-0-01.json
-│       └── room-1-0-02.json
-├── charts/                # Generated charts (PNG)
-└── reports/               # Generated PDF reports
+│       └── *.json
+├── reports/               # Generated reports
+│   ├── *.html            # HTML reports
+│   └── *.pdf             # PDF reports (if backend available)
+├── charts/               # Generated charts (if any)
+└── recommendations/      # Smart recommendations (JSON)
 ```
 
-## Configuration Files
+## Configuration
 
-### Analysis Configuration (`config/tests.yaml`)
+### Built-in Standards
 
-Defines test criteria for IEQ parameters:
+HVX includes pre-configured standards:
 
-```yaml
-parameters:
-  temperature:
-    tests:
-      - name: thermal_comfort
-        min: 20
-        max: 26
-        severity: HIGH
-  co2:
-    tests:
-      - name: air_quality
-        max: 1000
-        severity: CRITICAL
-```
+- **EN16798-1** - European standard with Categories I-IV
+  - Category I: High level (15-25°C, <800 ppm CO2)
+  - Category II: Normal level (16-26°C, <1000 ppm CO2)
+  - Category III: Moderate level (18-27°C, <1350 ppm CO2)
+  - Category IV: Low level (outside other categories)
 
-### Report Configuration (`config/report_config.yaml`)
+- **BR18** - Danish Building Regulations 2018
+- **Danish Guidelines** - Danish indoor climate guidelines
 
-Defines report templates and styling.
+### Report Templates
+
+Report templates are stored in `config/report_templates/`:
+
+- `building_detailed.yaml` - Comprehensive building analysis
+- `portfolio_summary.yaml` - High-level portfolio overview
+
+Templates can be customized during the interactive workflow.
 
 ## Common Options
 
@@ -214,90 +209,125 @@ hvx <command> <subcommand> --help  # Show subcommand help
 
 ## Examples
 
-### Complete Analysis Workflow
+### Basic Interactive Analysis
 
 ```bash
-# Load data from multiple buildings
-hvx data load data/portfolio -o output/dataset.pkl -f pickle
+# Start with interactive prompts
+hvx ieq start
 
-# Inspect the dataset
-hvx data inspect output/dataset.pkl
-
-# Run analysis
-hvx analyze run output/dataset.pkl --portfolio-name "Q1 2024 Portfolio"
-
-# View portfolio summary
-hvx analyze summary output/analysis --level portfolio
-
-# View specific building
-hvx analyze summary output/analysis --level building --entity-id building-1
-
-# View specific room
-hvx analyze summary output/analysis --level room --entity-id building-1_0_room-101
+# Follow the prompts:
+# 1. Enter data directory: data/samples/sample-extensive-data
+# 2. Select building type: Office
+# 3. Choose standards: Recommended for this building type
+# 4. Wait for analysis to complete
+# 5. Explore results or continue to reports
+# 6. Generate report using template
+# 7. Export data if needed
 ```
 
-### Working with Charts
+### Quick Automated Analysis
 
 ```bash
-# List all available charts
-hvx graphs list
+# Run complete workflow with defaults
+hvx ieq start --directory data/my-buildings --auto
 
-# Show chart details
-hvx graphs info co2_compliance_bar
-
-# Generate preview with dummy data
-hvx graphs preview co2_compliance_bar -o output/preview.png
+# Results saved to:
+# - output/analysis/ (JSON analysis results)
+# - output/reports/ (HTML/PDF reports if generated)
 ```
 
-### Creating Custom Templates
+### Starting from Specific Directory
 
 ```bash
-# Create template interactively
-hvx templates create
+# Start workflow with data directory pre-selected
+hvx ieq start --directory data/samples/sample-extensive-data
 
-# List all templates
-hvx templates list
+# The workflow will:
+# - Load data from the specified directory
+# - Continue with building type selection
+# - Then proceed with standards and analysis
+```
 
-# View template configuration
-hvx templates show my_template
+### Getting IEQ Information
 
-# Delete template
-hvx templates delete my_template
+```bash
+# Display IEQ terminology and concepts
+hvx ieq info
+
+# Shows explanations of:
+# - Temperature metrics
+# - CO2 levels
+# - Humidity
+# - Standards (EN16798-1, BR18, etc.)
+# - Compliance categories
 ```
 
 ## Troubleshooting
 
-### Data Loading Issues
+### Common Issues
 
-If `hvx data load` fails:
-- Verify directory structure matches expected format
-- Check CSV files have required `timestamp` column
-- Use `--verbose` flag for detailed error messages
-- Disable validation with `--no-validate` to diagnose issues
+**Issue: Directory structure not recognized**
+```
+⚠ Directory structure not recognized
+```
+**Solution:** Ensure your data follows the expected structure:
+```
+data/
+└── buildings/
+    ├── building-1/
+    │   └── sensors/
+    │       └── room1.csv
+```
 
-### Analysis Issues
+**Issue: Missing timestamp column**
+```
+✗ Error loading data: Missing required column 'timestamp'
+```
+**Solution:** Ensure all CSV files have a `timestamp` column with datetime values.
 
-If `hvx analyze run` fails:
-- Ensure dataset file exists and is valid
-- Check configuration file exists at `config/tests.yaml`
-- Use `--verbose` for detailed output
+**Issue: No PDF backend available**
+```
+⚠ No PDF backend available
+```
+**Solution:** Install a PDF generation library:
+```bash
+pip install weasyprint  # Recommended
+# or
+pip install pdfkit
+```
 
-### Report Generation Issues
+**Issue: Analysis fails**
+```
+✗ Error during analytics: [error message]
+```
+**Solution:** The workflow offers help options. Choose "Get help" or "Try again" from the error menu.
 
-If `hvx reports generate` fails:
-- Verify analysis data exists with `hvx analytics list`
-- Check template exists with `hvx templates list`
-- Ensure output directory is writable
+### Getting Help
+
+Within the interactive workflow:
+- Type `help` at any prompt for context-specific assistance
+- Type `quit` or `exit` to leave the workflow
+- Press `Ctrl+C` to cancel operations
+
+Command-line help:
+```bash
+hvx --help              # Show all commands
+hvx ieq --help          # Show IEQ commands
+hvx ieq start --help    # Show start command options
+```
 
 ## Additional Resources
 
-- [Quick Start Guide](../QUICKSTART.md)
-- [Data Loader Guide](../copilot/DATA_LOADER_QUICKSTART.md)
-- [Publishing Guide](../copilot/PUBLISHING_QUICKSTART.md)
+- [Interactive Workflow Guide](./interactive-workflow.md) - Detailed workflow documentation
+- [Chart Library Reference](../CHART_QUICK_REFERENCE.md) - Available visualization types
+- [Analytics Executors](../ANALYTICS_EXECUTORS_QUICK_REFERENCE.md) - Analysis engine details
+- [Quick Start Guide](../QUICKSTART.md) - Get started in 5 minutes
+- [Data Loader Guide](../copilot/DATA_LOADER_QUICKSTART.md) - Data format details
 
 ## Support
 
 For issues or questions:
+- Use `hvx ieq info` for IEQ terminology
 - Check command help with `--help`
-- Review error messages with `--verbose`
-- Consult documentation files in `docs/`
+- Consult documentation in `docs/`
+- Report issues at: https://github.com/bruadam/hvx/issues

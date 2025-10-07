@@ -1244,25 +1244,49 @@ class InteractiveWorkflow:
 
             if result['status'] == 'success':
                 console.print(f"\n[green]✓ Report generated successfully![/green]\n")
-                console.print(f"[bold]Output:[/bold] {result['primary_output']}")
+                
+                # Check if multiple building reports were generated
+                if 'reports' in result:
+                    # Multiple building reports
+                    console.print(f"[bold]Generated {result['successful_reports']} building reports:[/bold]\n")
+                    for report in result['reports']:
+                        if report.get('status') == 'success':
+                            console.print(f"  • {report['building_name']}: {report['primary_output']}")
+                    
+                    if result['failed_reports'] > 0:
+                        console.print(f"\n[yellow]⚠ {result['failed_reports']} reports failed to generate[/yellow]")
+                    
+                    console.print()
+                else:
+                    # Single report
+                    console.print(f"[bold]Output:[/bold] {result['primary_output']}")
 
-                if output_format == 'both':
-                    console.print(f"[bold]HTML:[/bold] {result['html']['output_path']}")
-                    if result['pdf']['status'] == 'success':
-                        console.print(f"[bold]PDF:[/bold] {result['pdf']['output_path']}")
+                    if output_format == 'both':
+                        console.print(f"[bold]HTML:[/bold] {result['html']['output_path']}")
+                        if result['pdf']['status'] == 'success':
+                            console.print(f"[bold]PDF:[/bold] {result['pdf']['output_path']}")
 
-                console.print()
+                    console.print()
 
                 # Offer to open report
                 if Confirm.ask("[bold]Open report in browser/viewer?[/bold]", default=True):
                     import webbrowser
                     import platform
 
-                    output_path = result['primary_output']
+                    if 'reports' in result:
+                        # Open first successful report
+                        first_success = next((r for r in result['reports'] if r.get('status') == 'success'), None)
+                        if first_success:
+                            output_path = first_success['primary_output']
+                        else:
+                            console.print("[yellow]No successful reports to open[/yellow]")
+                            return True
+                    else:
+                        output_path = result['primary_output']
 
-                    if result['format'] == 'html':
+                    if result.get('format') == 'html' or (not 'format' in result):
                         webbrowser.open(f'file://{output_path.absolute()}')
-                    elif result['format'] == 'pdf' and platform.system() == 'Darwin':
+                    elif result.get('format') == 'pdf' and platform.system() == 'Darwin':
                         # macOS: use 'open' command
                         import subprocess
                         subprocess.run(['open', str(output_path)])
