@@ -11,6 +11,9 @@ import sys
 import logging
 
 
+logger = logging.getLogger(__name__)
+
+
 class PDFGenerator:
     """Generates PDF from HTML reports."""
 
@@ -158,7 +161,6 @@ class PDFGenerator:
                 'pages': self._count_pdf_pages(pdf_path)
             }
         except Exception as e:
-            logger = logging.getLogger(__name__)
             logger.error(f"Weasyprint conversion error: {e}")
             return {
                 'status': 'error',
