@@ -8,6 +8,7 @@ Falls back to reportlab if HTML-to-PDF libraries are not available.
 from pathlib import Path
 from typing import Dict, Any, Optional
 import sys
+import logging
 
 
 class PDFGenerator:
@@ -90,23 +91,90 @@ class PDFGenerator:
         """Convert using weasyprint (best quality)."""
         try:
             import weasyprint
+            from weasyprint import CSS
 
-            # Generate PDF
+            # Default options for better PDF quality
+            default_options = {
+                'presentational_hints': True,
+                'optimize_size': ('fonts',),
+            }
+            
+            if options:
+                default_options.update(options)
+
+            # Additional CSS for better PDF rendering
+            pdf_css = CSS(string='''
+                @page {
+                    size: A4;
+                    margin: 2cm;
+                    
+                    @top-center {
+                        content: "IEQ Analysis Report";
+                        font-size: 10pt;
+                        color: #666;
+                    }
+                    
+                    @bottom-right {
+                        content: "Page " counter(page) " of " counter(pages);
+                        font-size: 9pt;
+                        color: #666;
+                    }
+                }
+                
+                /* Ensure charts and images don't break across pages */
+                .chart-container, .room-card, .compliance-card {
+                    page-break-inside: avoid;
+                }
+                
+                /* Better table rendering in PDF */
+                table {
+                    page-break-inside: auto;
+                }
+                
+                tr {
+                    page-break-inside: avoid;
+                    page-break-after: auto;
+                }
+                
+                /* Ensure section headings stay with content */
+                h1, h2, h3, h4 {
+                    page-break-after: avoid;
+                }
+            ''')
+
+            # Generate PDF with enhanced options
             html = weasyprint.HTML(filename=str(html_path))
-            html.write_pdf(str(pdf_path))
+            html.write_pdf(
+                str(pdf_path),
+                stylesheets=[pdf_css],
+                **default_options
+            )
 
             return {
                 'status': 'success',
                 'output_path': str(pdf_path),
                 'backend': 'weasyprint',
-                'file_size': pdf_path.stat().st_size
+                'file_size': pdf_path.stat().st_size,
+                'pages': self._count_pdf_pages(pdf_path)
             }
         except Exception as e:
+            logger = logging.getLogger(__name__)
+            logger.error(f"Weasyprint conversion error: {e}")
             return {
                 'status': 'error',
                 'message': str(e),
                 'backend': 'weasyprint'
             }
+    
+    def _count_pdf_pages(self, pdf_path: Path) -> Optional[int]:
+        """Count pages in generated PDF."""
+        try:
+            import PyPDF2
+            with open(pdf_path, 'rb') as f:
+                pdf_reader = PyPDF2.PdfReader(f)
+                return len(pdf_reader.pages)
+        except:
+            return None
 
     def _convert_with_pdfkit(
         self,
