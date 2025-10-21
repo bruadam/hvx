@@ -1,0 +1,9 @@
+description: "Temperature Category I compliance during non-heating season (opening hours)"
+parameter: temperature
+filter: opening_hours
+period: non_heating_season
+mode: bidirectional
+threshold:
+  lower: 22
+  upper: 26
+category: EN16798-1

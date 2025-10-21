@@ -1,0 +1,56 @@
+# Portfolio Overview Report Template
+# Multi-building portfolio analysis with variable detail levels
+
+template_name: "portfolio_overview_report"
+report_type: "portfolio"
+title: "Portfolio IEQ Performance Report"
+description: "Comprehensive analysis across multiple buildings with portfolio-level insights"
+author: "IEQ Analytics Platform"
+
+# Room filtering - not applicable for portfolio report
+room_filter:
+  mode: "all"
+  sort_by: "compliance"
+  ascending: false
+
+# Report sections
+sections:
+  # Portfolio-level executive summary
+  - type: "executive_summary"
+    title: "Portfolio Executive Summary"
+    description: "High-level overview of IEQ performance across all buildings"
+
+  # Portfolio overview chart
+  - type: "chart"
+    title: "Portfolio Performance Overview"
+    description: "KPIs and building comparisons across the portfolio"
+    chart:
+      type: "portfolio_overview"
+
+  # Building comparison bar chart
+  - type: "chart"
+    title: "Building Performance Comparison"
+    description: "Compliance rates and grades for all buildings"
+    chart:
+      type: "bar_building_comparison"
+      sort: true
+
+  # Top and bottom performers
+  - type: "summary"
+    title: "Performance Analysis"
+    description: "Identifying best and worst performing buildings"
+
+  # Strategic recommendations at portfolio level
+  - type: "recommendations"
+    title: "Portfolio-Wide Recommendations"
+    description: "Strategic actions to improve IEQ performance across the portfolio"
+    max_recommendations: 10
+
+# Output settings
+output_format: ["html"]
+include_interactive_charts: true
+theme: "professional"
+
+# Compliance settings
+compliance_standard: "EN16798-1"
+building_class: "II"

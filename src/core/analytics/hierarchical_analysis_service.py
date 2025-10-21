@@ -171,7 +171,9 @@ class HierarchicalAnalysisService:
             data_period_start=room.data_period_start,
             data_period_end=room.data_period_end,
             overall_quality_score=room.get_overall_quality_score(),
-            parameters_analyzed=list(room.timeseries.keys())
+            parameters_analyzed=list(room.timeseries.keys()),
+            en16798_category=None,
+            en16798_category_confidence=None,
         )
         
         # Calculate data completeness

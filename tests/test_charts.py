@@ -3,7 +3,7 @@
 
 import json
 from pathlib import Path
-from src.core.reporting.UnifiedReportService import UnifiedReportService
+from src.core.reporting.ReportService import ReportService
 from src.core.models.results.building_analysis import BuildingAnalysis
 
 # Load building analysis from JSON
@@ -36,7 +36,7 @@ building_analysis = BuildingAnalysis(
 )
 
 # Initialize report service
-report_service = UnifiedReportService(enable_validation=False)
+report_service = ReportService(enable_validation=False)
 
 # Generate report
 config_path = Path("config/report_templates/building_detailed.yaml")
