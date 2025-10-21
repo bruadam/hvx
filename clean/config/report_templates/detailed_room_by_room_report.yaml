@@ -1,0 +1,72 @@
+# Detailed Room-by-Room Building Report Template
+# Includes building statistics and individual room sections with charts
+
+template_name: "detailed_room_by_room_report"
+report_type: "building"
+title: "Detailed Room-by-Room IEQ Analysis Report"
+description: "Comprehensive building-level statistics with detailed analysis for each individual room"
+author: "IEQ Analytics Platform"
+
+# Room filtering and sorting
+room_filter:
+  mode: "all"  # Include all rooms
+  sort_by: "compliance"  # Sort by compliance rate
+  ascending: false  # Best performers first
+
+# Report sections
+sections:
+  # Building overview with KPIs
+  - type: "kpi_cards"
+    title: "Building Performance Overview"
+    description: "Key performance indicators for the entire building"
+
+  # NEW: Building-level statistics section
+  - type: "building_statistics"
+    title: "Building Statistics"
+    description: "Comprehensive statistics including parameter-specific performance metrics"
+
+  # Building-level KPI dashboard chart
+  - type: "chart"
+    title: "Building KPI Dashboard"
+    description: "Visual overview of building performance"
+    chart:
+      type: "building_kpi_dashboard"
+
+  # Room comparison bar chart
+  - type: "chart"
+    title: "Room Compliance Comparison"
+    description: "Compare compliance rates across all rooms"
+    chart:
+      type: "bar_room_comparison"
+      metric: "compliance"
+      sort: true
+      ascending: false
+      show_only_failing: false
+      failing_threshold: 95.0
+
+  # Compliance matrix - all rooms x all tests
+  - type: "chart"
+    title: "Compliance Matrix"
+    description: "Compliance rates for all rooms across all tests"
+    chart:
+      type: "compliance_matrix"
+
+  # NEW: Individual room details section with looping
+  - type: "room_details"
+    title: "Individual Room Analysis"
+    description: "Detailed metrics and compliance results for each room"
+
+  # Recommendations
+  - type: "recommendations"
+    title: "Improvement Recommendations"
+    description: "Priority actions to improve IEQ performance"
+    max_recommendations: 10
+
+# Output settings
+output_format: ["html"]
+include_interactive_charts: true
+theme: "professional"
+
+# Compliance settings
+compliance_standard: "EN16798-1"
+building_class: "II"  # Medium expectation level

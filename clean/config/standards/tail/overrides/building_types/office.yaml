@@ -1,0 +1,21 @@
+# Office Building Type Overrides
+# Overrides default TAIL configuration for office buildings
+
+building_type: "office"
+
+parameter_overrides:
+  # Office-specific illuminance requirements
+  illuminance:
+    calculation_method: "frequency_range"
+    target_range:
+      min: 300
+      max: 500
+    thresholds:
+      green:
+        frequency_percentage: 60  # >60% time in 300-500 lux range
+      yellow:
+        frequency_percentage: 40  # 40-60% time in range
+      orange:
+        frequency_percentage: 10  # 10-40% time in range
+      red:
+        frequency_percentage: 0   # <10% time in range

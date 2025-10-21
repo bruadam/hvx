@@ -1,0 +1,114 @@
+# Comprehensive Building Report Template
+# Shows all rooms with detailed analysis
+
+template_name: "comprehensive_building_report"
+report_type: "building"
+title: "Comprehensive IEQ Building Analysis Report"
+description: "Detailed analysis of all rooms with compliance metrics, data quality, and recommendations"
+author: "IEQ Analytics Platform"
+
+# Room filtering and sorting
+room_filter:
+  mode: "all"  # Include all rooms
+  sort_by: "compliance"  # Sort by compliance rate
+  ascending: false  # Best performers first
+
+# Report sections
+sections:
+  # Executive summary with KPIs
+  - type: "kpi_cards"
+    title: "Building Performance Overview"
+    description: "Key performance indicators for the entire building"
+
+  # Building Statistics (NEW FEATURE)
+  - type: "building_statistics"
+    title: "Detailed Building Statistics"
+    description: "Comprehensive statistics including parameter-specific performance metrics"
+
+  # Building-level KPI dashboard
+  - type: "chart"
+    title: "Building KPI Dashboard"
+    chart:
+      type: "building_kpi_dashboard"
+
+  # Room comparison bar chart
+  - type: "chart"
+    title: "Room Compliance Comparison"
+    description: "Compliance rates across all rooms"
+    chart:
+      type: "bar_room_comparison"
+      metric: "compliance"
+      sort: true
+      ascending: false
+      show_only_failing: false
+      failing_threshold: 95.0
+
+  # Temperature timeseries with compliance highlighting
+  - type: "chart"
+    title: "Temperature Analysis - Winter Season"
+    description: "Temperature readings with non-compliant periods highlighted in red"
+    chart:
+      type: "timeseries_compliance"
+      parameters: ["temperature"]
+      season: "winter"
+      show_threshold: true
+
+  # CO2 timeseries with compliance highlighting
+  - type: "chart"
+    title: "CO2 Levels Analysis"
+    description: "CO2 concentration with violations highlighted"
+    chart:
+      type: "timeseries_compliance"
+      parameters: ["co2"]
+      season: "all"
+      show_threshold: true
+
+  # Hourly heatmap for temperature
+  - type: "chart"
+    title: "Temperature Patterns - Hourly Distribution"
+    description: "Temperature distribution across hours and days of the week"
+    chart:
+      type: "heatmap_hourly_daily"
+      parameters: ["temperature"]
+      season: "winter"
+
+  # Compliance heatmap
+  - type: "chart"
+    title: "Compliance Patterns - When Do Violations Occur?"
+    description: "Compliance rate by hour and day of week"
+    chart:
+      type: "heatmap_compliance"
+      parameters: ["temperature"]
+      season: "winter"
+
+  # Compliance matrix - all rooms x all tests
+  - type: "chart"
+    title: "Compliance Matrix"
+    description: "Compliance rates for all rooms across all tests"
+    chart:
+      type: "compliance_matrix"
+
+  # Detailed table with all rooms
+  - type: "table"
+    title: "Detailed Room Metrics"
+    description: "Complete breakdown of metrics for all rooms"
+
+  # Individual Room Details (NEW FEATURE)
+  - type: "room_details"
+    title: "Individual Room Analysis"
+    description: "Detailed compliance metrics for each room"
+
+  # Recommendations
+  - type: "recommendations"
+    title: "Improvement Recommendations"
+    description: "Priority actions to improve IEQ performance"
+    max_recommendations: 10
+
+# Output settings
+output_format: ["html"]
+include_interactive_charts: true
+theme: "professional"
+
+# Compliance settings
+compliance_standard: "EN16798-1"
+building_class: "II"  # Medium expectation level

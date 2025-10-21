@@ -5,7 +5,7 @@
 The HVX CLI is already installed. To reinstall or update:
 
 ```bash
-python3 -m pip install -e .
+python -m pip install -e .
 ```
 
 ## Verify Installation

@@ -10,8 +10,6 @@ __all__ = [
     'DataExplorer',
     'launch_explorer',
     # Workflows
-    'InteractiveWorkflow',
-    'launch_interactive_workflow',
-    'SimplifiedWorkflow',
-    'launch_simplified_workflow',
+    'IEQStartInteractive',
+    'ieq_start_interactive'
 ]

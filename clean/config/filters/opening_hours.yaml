@@ -1,0 +1,11 @@
+hours:
+  - 8
+  - 9
+  - 10
+  - 11
+  - 12
+  - 13
+  - 14
+  - 15
+weekdays_only: true
+exclude_holidays: true

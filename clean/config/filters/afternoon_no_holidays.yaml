@@ -1,0 +1,9 @@
+description: Afternoon (12-15), weekdays, excludes school holidays
+hours:
+  - 12
+  - 13
+  - 14
+  - 15
+weekdays_only: true
+exclude_holidays: true
+exclude_custom_holidays: true

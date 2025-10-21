@@ -7,7 +7,7 @@ when generating reports.
 """
 
 from pathlib import Path
-from src.core.reporting.UnifiedReportService import UnifiedReportService
+from src.core.reporting.ReportService import ReportService
 from src.core.analytics.analytics_validator import AnalyticsValidator
 from src.core.analytics.analytics_orchestrator import AnalyticsOrchestrator
 from src.core.analytics.analytics_tags import (
@@ -24,7 +24,7 @@ def example_1_basic_report_with_validation():
     print("=" * 60)
     
     # Initialize service with validation enabled
-    service = UnifiedReportService(
+    service = ReportService(
         enable_validation=True,
         auto_execute_missing=True
     )

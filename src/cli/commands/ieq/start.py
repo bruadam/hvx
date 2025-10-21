@@ -8,6 +8,8 @@ from typing import Optional
 from rich.console import Console
 from rich.panel import Panel
 
+from src.cli.ui.workflows.ieq_start_interactive import IEQStartInteractive
+
 console = Console()
 
 
@@ -44,14 +46,13 @@ def start(directory: Optional[Path], auto: bool):
         # Run in auto mode (use defaults)
         hvx ieq start --auto
     """
-    from src.cli.ui.workflows.interactive_workflow import launch_interactive_workflow
-
     try:
-        # Launch workflow
-        launch_interactive_workflow(
-            data_directory=directory if directory else None,
-            auto_mode=auto
-        )
+        workflow = IEQStartInteractive(auto_mode=auto)
+
+        if directory is not None:
+            workflow.data_directory = directory
+
+        workflow.start()
 
     except KeyboardInterrupt:
         console.print("\n\n[yellow]Workflow cancelled by user[/yellow]")

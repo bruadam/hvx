@@ -1,0 +1,11 @@
+description: "Temperature Category II compliance during heating season (opening hours)"
+parameter: temperature
+filter: opening_hours
+period: heating_season
+mode: bidirectional
+threshold:
+  lower: 20
+  upper: 24
+category: EN16798-1
+building_types: [office, school, mixed]  # Category II typical for offices and schools
+room_types: [office, classroom, meeting_room, library]  # Occupied spaces

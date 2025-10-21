@@ -1,0 +1,103 @@
+# Seasonal Analysis Report Template
+# Focused analysis on specific season (e.g., winter, summer)
+
+template_name: "seasonal_analysis_report"
+report_type: "building"
+title: "Winter Season IEQ Analysis Report"
+description: "Detailed analysis of IEQ performance during winter season with temperature focus"
+author: "IEQ Analytics Platform"
+
+# Room filtering
+room_filter:
+  mode: "all"
+  sort_by: "compliance"
+  ascending: false
+
+# Report sections - all charts filtered to winter season
+sections:
+  # KPI overview
+  - type: "kpi_cards"
+    title: "Winter Season Performance"
+    description: "Key metrics for winter season"
+
+  # Room comparison for winter
+  - type: "chart"
+    title: "Room Performance - Winter Season"
+    description: "Compliance rates during winter months"
+    chart:
+      type: "bar_room_comparison"
+      metric: "compliance"
+      sort: true
+      ascending: false
+      show_only_failing: false
+      failing_threshold: 95.0
+
+  # Temperature timeseries - winter only
+  - type: "chart"
+    title: "Temperature Analysis - Winter Period"
+    description: "Temperature compliance with violations highlighted in RED"
+    chart:
+      type: "timeseries_compliance"
+      parameters: ["temperature"]
+      season: "winter"  # KEY: Filter to winter season
+      show_threshold: true
+
+  # Hourly heatmap - winter patterns
+  - type: "chart"
+    title: "Temperature Patterns - Winter Hourly Distribution"
+    description: "How temperature varies by hour and day during winter"
+    chart:
+      type: "heatmap_hourly_daily"
+      parameters: ["temperature"]
+      season: "winter"  # KEY: Filter to winter season
+
+  # Compliance heatmap - winter
+  - type: "chart"
+    title: "Compliance Patterns - Winter Season"
+    description: "When do violations occur during winter?"
+    chart:
+      type: "heatmap_compliance"
+      parameters: ["temperature"]
+      season: "winter"  # KEY: Filter to winter season
+
+  # Humidity analysis - winter
+  - type: "chart"
+    title: "Humidity Levels - Winter Period"
+    description: "Humidity compliance during winter months"
+    chart:
+      type: "timeseries_compliance"
+      parameters: ["humidity"]
+      season: "winter"  # KEY: Filter to winter season
+      show_threshold: true
+
+  # Multi-parameter view - winter
+  - type: "chart"
+    title: "All Parameters - Winter Overview"
+    description: "Temperature, CO2, and humidity during winter"
+    chart:
+      type: "timeseries_multi_parameter"
+      parameters: ["temperature", "co2", "humidity"]
+      season: "winter"  # KEY: Filter to winter season
+
+  # Violation timeline - winter
+  - type: "chart"
+    title: "Winter Violations Timeline"
+    description: "Severity and timing of violations during winter"
+    chart:
+      type: "violation_timeline"
+      parameters: ["temperature"]
+
+  # Recommendations specific to winter issues
+  - type: "recommendations"
+    title: "Winter Season Recommendations"
+    description: "Actions to improve performance during winter months"
+    max_recommendations: 10
+
+# Output settings
+output_format: ["html"]
+include_interactive_charts: true
+theme: "professional"
+
+# Compliance settings
+compliance_standard: "EN16798-1"
+building_class: "II"
