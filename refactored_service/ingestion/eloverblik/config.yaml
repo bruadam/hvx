@@ -1,0 +1,8 @@
+id: "eloverblik"
+name: "Eloverblik DK"
+type: "external_api"
+
+fields:
+  api_key: required
+  meter_ids: required
+  polling_interval: optional

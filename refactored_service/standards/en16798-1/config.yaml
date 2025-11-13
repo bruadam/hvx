@@ -1,0 +1,33 @@
+id: "en16798-1"
+name: "EN 16798-1 Indoor Environmental Input Parameters"
+version: "2024.1"
+standard_type: "EN16798-1"
+category_based: true
+categories: ["I", "II", "III", "IV"]
+
+applicability:
+  countries: ["EU"]
+  regions: ["Europe"]
+  continents: ["Europe"]
+  building_types: ["office", "school"]
+  ventilation_types: ["natural", "mechanical", "mixed"]
+  seasons: ["ALL_YEAR"]
+
+required_inputs:
+  temperature: true
+  co2: true
+  humidity: false
+
+allow_partial_analysis: true
+
+rules:
+  - id: "temp_cat2"
+    name: "Temperature Cat II"
+    metric: "temperature"
+    operator: "between"
+    lower_bound: 20
+    upper_bound: 26
+    tolerance_hours: 100
+    applies_during: "occupied"
+
+analysis_module: "standards.en16798-1.analysis:run"

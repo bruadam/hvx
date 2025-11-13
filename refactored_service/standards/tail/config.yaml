@@ -1,0 +1,22 @@
+id: "tail"
+name: "TAIL Indoor Climate Standard"
+version: "2024.1"
+standard_type: "TAIL"
+category_based: true
+categories: ["A", "B", "C", "D"]
+
+applicability:
+  countries: null
+  regions: null
+  continents: null
+  seasons: ["ALL_YEAR"]
+
+required_inputs:
+  temperature: true
+  co2: true
+
+allow_partial_analysis: true
+
+rules: []
+
+analysis_module: "standards.tail.analysis:run"

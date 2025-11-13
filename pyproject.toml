@@ -1,88 +1,109 @@
 [build-system]
-requires = ["setuptools>=61.0", "wheel"]
+requires = ["setuptools>=68.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "hvx"
-version = "0.1.0"
-description = "HVAC Analytics eXpert - Indoor Environmental Quality analysis CLI"
+version = "0.2.0"
+description = "HVAC Analytics for Existing Buildings - Indoor Environmental Quality"
 readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "Proprietary License"}
 authors = [
-    {name = "Bruno Adam", email = "bruno.adam@pm.me"}
+    {name = "HVX", email = "bruno.adam@pm.me"}
 ]
-license = {text = "MIT"}
+keywords = ["ieq", "analytics", "building", "environmental-quality", "compliance"]
+
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Science/Research",
-    "Topic :: Scientific/Engineering",
-    "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
-    "Programming Language :: Python :: 3.13",
 ]
-keywords = ["hvac", "analytics", "ieq", "indoor-air-quality", "climate", "data-analysis"]
-requires-python = ">=3.9"
+
 dependencies = [
-    "click>=8.0.0",
-    "rich>=13.0.0",
     "pandas>=2.0.0",
     "numpy>=1.24.0",
-    "matplotlib>=3.7.0",
-    "seaborn>=0.12.0",
-    "pyyaml>=6.0",
-    "reportlab>=4.0.0",
-    "holidays>=0.35",
-    "python-dateutil>=2.8.0",
-    "jinja2>=3.0.0",
     "pydantic>=2.0.0",
+    "pyyaml>=6.0",
+    "plotly>=5.14.0",
+    "jinja2>=3.1.0",
+    "click>=8.1.0",
+    "rich>=13.0.0",
+    "openpyxl>=3.1.0",  # Excel support
+    "python-dateutil>=2.8.0",
+    "brickschema>=0.6.0",  # Brick Schema ontology
+    "rdflib>=7.0.0",  # RDF graph support
 ]
 
-[project.optional-dependencies]
-dev = [
-    "pytest>=7.0.0",
-    "pytest-cov>=4.0.0",
-    "black>=23.0.0",
-    "flake8>=6.0.0",
-    "mypy>=1.0.0",
-    "isort>=5.12.0",
-]
 
-[project.urls]
-Homepage = "https://github.com/bruadam/hvx"
-Documentation = "https://github.com/bruadam/hvx/blob/main/docs/QUICKSTART.md"
-Repository = "https://github.com/bruadam/hvx"
-"Bug Tracker" = "https://github.com/bruadam/hvx/issues"
 
 [project.scripts]
-hvx = "src.cli.main:cli"
+ieq = "core.cli.main:cli"
+hvx = "core.cli.main:cli"  # Backwards compatibility
+
+[project.urls]
+Homepage = "https://brunoadam.eu/"
+Repository = "https://github.com/bruadam/hvx"
 
 [tool.setuptools]
-packages = ["src", "src.cli", "src.core"]
-include-package-data = true
+packages = ["core"]
 
 [tool.setuptools.package-data]
-src = ["graphs/*.yaml", "graphs/fixtures/*.json", "reporting/templates/*.yaml"]
+core = ["py.typed"]
 
 [tool.black]
 line-length = 100
-target-version = ['py39', 'py310', 'py311', 'py312']
+target-version = ['py310', 'py311', 'py312']
 include = '\.pyi?$'
 
-[tool.isort]
-profile = "black"
-line_length = 100
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "UP",  # pyupgrade
+]
+ignore = [
+    "E501",  # line too long (handled by black)
+    "B008",  # do not perform function calls in argument defaults
+]
 
 [tool.mypy]
-python_version = "3.9"
+python_version = "3.10"
 warn_return_any = true
 warn_unused_configs = true
-disallow_untyped_defs = false
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+strict_equality = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
+addopts = [
+    "--strict-markers"
+]
+
+[tool.coverage.run]
+source = ["core"]
+omit = ["*/tests/*", "*/__pycache__/*"]
+
+[tool.coverage.report]
+precision = 2
+show_missing = true
+skip_covered = false

@@ -1,0 +1,10 @@
+id: "eemeter"
+name: "EEMeter Baseline Model"
+type: "eemeter"
+
+required_inputs:
+  energy: true
+  temperature: true
+
+produces:
+  - "energy_baseline"

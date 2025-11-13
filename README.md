@@ -1,278 +1,194 @@
-# HVX CLI - Indoor Environmental Quality & Energy Analytics
+# HVX
 
-A comprehensive command-line tool for analyzing Indoor Environmental Quality (IEQ) and energy efficiency data in buildings. HVX provides an interactive workflow that guides you through data loading, standards selection, hierarchical analysis, and professional report generation.
+Professional Indoor Environmental Quality (IEQ) Analytics Platform
+
+## Overview
+
+A clean, scalable, type-safe analytics platform for analyzing building environmental quality data (temperature, CO2, humidity, etc.) against international standards like EN16798-1 and BR18.
 
 ## Features
 
-- 🎯 **Interactive Workflow** - Guided step-by-step analysis process
-- 📊 **Hierarchical Analysis** - Portfolio, building, level, and room-level insights
-- 📋 **Standards Compliance** - EN16798-1, BR18, Danish Guidelines, and more
-- 📈 **Rich Visualizations** - Extensible chart library with multiple chart types
-- 📄 **Professional Reports** - HTML and PDF reports with customizable templates
-- 🏢 **Multi-Building Support** - Analyze entire building portfolios
-- 🔍 **Data Quality Metrics** - Comprehensive data validation and quality scoring
-- 🎯 **Smart Recommendations** - AI-powered improvement suggestions
-- 🔌 **Extensible** - JSON-first architecture for easy integration
+- **🎨 YAML-Driven Reports**: Define reports in YAML with automatic analytics execution
+- **📊 Rich Visualizations**: Heatmaps, timeseries with RED violation highlighting, bar charts
+- **🔧 Modular Analytics Engine**: Pluggable evaluators for different compliance standards
+- **✅ Type-Safe**: Full Pydantic models with comprehensive validation
+- **🏢 Hierarchical Analysis**: Room → Level → Building → Portfolio
+- **💡 Smart Recommendations**: Evidence-based insights with climate correlation analysis
+- **🌤️ Climate Correlation**: Identify which external factors (solar, temperature, wind) drive issues
+- **📄 Multiple Output Formats**: HTML and PDF reports
+- **🔌 Extensible**: Easy to add new standards, charts, and analytics
 
-## Quick Start
+### Chart Types
 
-```bash
-# Clone repository
-git clone https://github.com/bruadam/hvx.git
-cd hvx
+- **Heatmaps**: Hours on Y-axis, days/months on X-axis showing temporal patterns
+- **Timeseries**: Non-compliant periods highlighted in RED for immediate visibility
+- **Bar Charts**: Compare rooms/buildings by compliance %, quality, or violations
+- **KPI Dashboards**: Building and portfolio-level gauges and metrics
+- **Compliance Matrix**: All rooms × all tests matrix view
 
-# Install
-pip install -e .
+### Pre-built Report Templates
 
-# Start interactive IEQ analysis
-hvx ieq start
-
-# Or start with a specific data directory
-hvx ieq start --directory data/samples/sample-extensive-data
-```
-
-## Installation
-
-### From Source
-
-```bash
-# Clone repository
-git clone https://github.com/bruadam/hvx.git
-cd hvx
-
-# Install in development mode
-pip install -e .
-
-# Verify installation
-hvx --version
-```
-
-### Requirements
-
-- Python 3.9+
-- See [setup.py](setup.py) for full dependencies
-
-## Documentation
-
-### 📚 Complete CLI Documentation
-
-- **[CLI Overview](docs/cli/README.md)** - Complete command reference and workflows
-- **[IEQ Commands](docs/cli/ieq.md)** - Indoor Environmental Quality analysis
-- **[Interactive Workflow](docs/cli/interactive-workflow.md)** - Step-by-step analysis guide
-
-### 📖 Additional Resources
-
-- **[Quick Start Guide](docs/QUICKSTART.md)** - Get started in 5 minutes
-
-## Command Overview
-
-### Indoor Environmental Quality (IEQ)
-```bash
-hvx ieq start                          # Start interactive IEQ analysis workflow
-hvx ieq start --directory <path>       # Start with specific data directory
-hvx ieq start --auto                   # Run with default settings (non-interactive)
-hvx ieq info                           # Show IEQ terminology and concepts
-```
-
-### Energy Efficiency
-```bash
-hvx energy                             # Energy analysis commands (coming soon)
-```
-
-### Settings & Configuration
-```bash
-hvx settings                           # Manage HVX settings and configurations
-```
-
-## Interactive Workflow
-
-HVX provides a guided, step-by-step workflow for IEQ analysis:
-
-```bash
-# Start the interactive workflow
-hvx ieq start
-```
-
-**The workflow guides you through:**
-
-1. **Load Building Data** - Point to your data directory containing building sensor data
-2. **Select Building Type** - Office, school, residential, healthcare, or mixed
-3. **Choose Standards** - Select compliance standards (EN16798-1, BR18, Danish Guidelines)
-4. **Process Analytics** - Automated hierarchical analysis at portfolio, building, level, and room levels
-5. **Explore Results** - Interactive exploration of analysis results and metrics
-6. **Generate Reports** - Create professional HTML/PDF reports using templates
-7. **Export Data** - Save analytics data in various formats (JSON, Excel, CSV, Markdown)
-
-**For automation or scripting:**
-
-```bash
-# Run with defaults (no prompts)
-hvx ieq start --directory data/my-buildings --auto
-
-# Start from a specific directory
-hvx ieq start --directory data/samples/sample-extensive-data
-```
-
-## Data Format
-
-### Directory Structure (for portfolio analysis)
-
-```
-data/
-└── buildings/
-    ├── building-1/
-    │   ├── climate/
-    │   │   └── climate-data.csv
-    │   └── sensors/
-    │       ├── room1.csv
-    │       └── room2.csv
-    └── building-2/
-        └── sensors/
-            └── room1.csv
-```
-
-### CSV Format
-
-All CSV files require:
-- `timestamp` column in ISO 8601 format
-- Sensor columns: `temperature`, `co2`, `humidity`, `occupancy`, etc.
-
-```csv
-timestamp,temperature,co2,humidity,occupancy
-2024-01-01 00:00:00,20.5,450,55,0
-2024-01-01 01:00:00,20.3,430,54,0
-```
-
-See [Data Commands Documentation](docs/cli/data.md) for detailed format requirements.
+- **Comprehensive Building Report**: Full analysis with all rooms and charts
+- **Problematic Rooms Report**: Focus on failing rooms only
+- **Worst Room Climate Analysis**: Deep-dive into worst performer with climate correlation and root cause analysis
+- **Building KPI Report**: Executive summary with KPIs only
+- **Portfolio Overview Report**: Multi-building analysis
+- **Seasonal Analysis Report**: Winter/summer focused analysis
+- **Top/Bottom Performers Report**: Best and worst rooms comparison
 
 ## Architecture
 
-### Analysis Pipeline
-
 ```
-Directory Structure → Data Loader → Dataset (Pickle)
-                                      ↓
-                                   Analysis Engine
-                                      ↓
-                              Hierarchical Results (JSON)
-                                      ↓
-                            ┌─────────┴─────────┐
-                         Reports            Dashboards
-```
-
-### Output Structure
-
-```
-output/
-├── dataset.pkl              # Loaded data
-├── dataset.json            # Data summary
-├── analysis/               # Analysis results
-│   ├── portfolio.json
-│   ├── buildings/*.json
-│   ├── levels/*.json
-│   └── rooms/*.json
-├── charts/                 # Generated charts
-└── reports/                # PDF reports
-```
-
-## Configuration
-
-### Standards and Tests
-
-HVX includes built-in support for multiple IEQ standards:
-
-- **EN16798-1** - European standard for indoor environmental parameters (Categories I-IV)
-- **BR18** - Danish Building Regulations 2018
-- **Danish Guidelines** - Danish indoor climate guidelines
-
-Standards are configured during the interactive workflow or can be customized in:
-- `src/core/analytics/ieq/config/standards/` - Standard definitions (EN16798-1, BR18, Danish Guidelines)
-- `config/report_templates/` - Report templates (building_detailed.yaml, portfolio_summary.yaml)
-
-See the [interactive workflow documentation](docs/cli/interactive-workflow.md) for configuration details.
-
-## Development
-
-### Running Tests
-
-```bash
-# Run test workflow
-./tests/test_hvx_workflow.sh
-
-# Run specific tests
-pytest tests/
-```
-
-### Project Structure
-
-```
-analytics/
-├── src/                    # Source code
-│   ├── cli/               # CLI commands
-│   ├── core/              # Core analytics engine
-│   ├── models/            # Data models
-│   ├── services/          # Service layer
-│   ├── graphs/            # Chart library
-│   └── reporting/         # Report templates
+clean/
+├── core/           # Main package
+│   ├── domain/             # Domain models (entities, value objects)
+│   ├── application/        # Application services & use cases
+│   ├── infrastructure/     # External integrations (data loading, file I/O)
+│   ├── analytics/          # Analytics engine & evaluators
+│   ├── reporting/          # Report generation & rendering
+│   └── cli/               # Command-line interface
 ├── config/                # Configuration files
-├── docs/                  # Documentation
-├── tests/                 # Test files
-└── output/               # Generated outputs
+│   ├── standards/         # Standard definitions (EN16798-1, BR18, etc.)
+│   ├── report_templates/  # Report YAML templates
+│   └── filters/           # Time filters & periods
+├── data/                  # Data directory (gitignored)
+├── output/               # Output directory (gitignored)
+└── tests/                # Test suite
+
 ```
 
-## Examples
+## Quick Start
 
-### Complete Analysis Example
-
+### 1. Installation
 ```bash
-# Start interactive workflow
-hvx ieq start --directory data/samples/sample-extensive-data
-
-# The interactive workflow will guide you through:
-# 1. Confirming data directory and loading buildings
-# 2. Selecting building type (office, school, etc.)
-# 3. Choosing applicable standards (EN16798-1, BR18, etc.)
-# 4. Running hierarchical analysis
-# 5. Exploring results
-# 6. Generating reports
-# 7. Exporting data
+# Install package
+pip install -e .
 ```
 
-### Automated Analysis
-
+### 2. Test Report Generation
 ```bash
-# Run with defaults (non-interactive)
-hvx ieq start --directory data/samples/sample-extensive-data --auto
-
-# Results will be saved to:
-# - output/analysis/ - Analysis results (JSON)
-# - output/reports/ - Generated reports (HTML/PDF)
+# Run comprehensive report generation test
+python test_report_generation.py
 ```
 
-### Get IEQ Information
+This will:
+- Create sample IEQ data for 8 rooms
+- Generate reports from all available templates
+- Save HTML reports to `output/reports/generated_reports/`
 
+### 3. Generate Custom Reports
+```python
+from pathlib import Path
+from ieq_analytics.reporting import ReportGenerator
+from ieq_analytics.infrastructure.data_loaders.csv_loader import CSVDataLoader
+
+# Load your data
+loader = CSVDataLoader()
+room = loader.load_room(Path("data/room.csv"), "room_01", "Conference Room")
+
+# Generate report
+generator = ReportGenerator()
+generator.generate_from_template(
+    template_path=Path("config/report_templates/comprehensive_building_report.yaml"),
+    rooms=[room],
+    building_name="Building A",
+    output_path=Path("output/report.html")
+)
+```
+
+See [REPORT_GENERATION.md](docs/REPORT_GENERATION.md) for detailed documentation.
+
+### 4. Worst Performing Room Analysis with Climate Correlation
+
+The platform includes advanced capabilities for identifying and analyzing worst-performing rooms with climate correlation:
+
+```python
+from pathlib import Path
+from core.reporting.report_generator import ReportGenerator
+from core.utils.synthetic_climate_data import generate_climate_data
+
+# Generate or load climate data
+climate_data = generate_climate_data(
+    start_date="2024-01-01",
+    end_date="2024-12-31",
+    location_type="temperate",
+    seed=42
+)
+
+# Generate focused report on worst performing room
+generator = ReportGenerator()
+generator.generate_from_template(
+    template_path=Path("config/report_templates/worst_room_climate_analysis.yaml"),
+    rooms=rooms,  # Your room data
+    building_name="My Building",
+    output_path=Path("output/worst_room_report.html")
+)
+```
+
+This generates a comprehensive report including:
+- **Automatic identification** of worst performing room
+- **Heatmaps** showing when violations occur (hour × day, day × month)
+- **Trend analysis** with violation timelines
+- **Climate correlation analysis** identifying external drivers (solar radiation, outdoor temperature, etc.)
+- **Evidence-based recommendations** backed by statistical analysis
+- **Root cause identification** (e.g., solar gain vs. poor insulation vs. ventilation issues)
+
+Try the demo:
 ```bash
-# Show IEQ terminology and concepts
-hvx ieq info
+python examples/demo_worst_room_climate_report.py
 ```
 
-## Contributing
+This will:
+- Generate synthetic climate data (solar radiation, temperature, humidity, wind)
+- Create multiple rooms with various performance scenarios
+- Identify the worst performer automatically
+- Perform climate correlation analysis
+- Generate targeted, evidence-based recommendations
+- Create comprehensive HTML report with visualizations
 
-Contributions are welcome! Please:
-1. Fork the repository
-2. Create a feature branch
-3. Submit a pull request
+## Project Structure
+
+### Domain Layer (`domain/`)
+Pure business logic with no external dependencies:
+- **models/**: Core domain entities (Room, Building, Analysis Results)
+- **enums/**: Type-safe enumerations
+- **value_objects/**: Immutable value types
+
+### Application Layer (`application/`)
+Orchestrates business logic:
+- **use_cases/**: High-level operations
+- **services/**: Application services
+- **interfaces/**: Abstract interfaces (ports)
+
+### Infrastructure Layer (`infrastructure/`)
+External system interactions:
+- **data_loaders/**: CSV/Excel/JSON data loading
+- **file_storage/**: File system operations
+- **external_apis/**: Weather data, etc.
+
+### Analytics Layer (`analytics/`)
+IEQ-specific analytics:
+- **engine/**: Core analysis engine
+- **evaluators/**: Standard-specific evaluators
+- **metrics/**: Calculation functions
+- **filters/**: Time-based filters
+
+### Reporting Layer (`reporting/`)
+Report generation:
+- **template_engine/**: YAML template processor
+- **renderers/**: HTML/PDF renderers
+- **charts/**: Chart generation
+- **validators/**: Template validators
+
+## Development Principles
+
+1. **One class per file** - Easy to navigate and maintain
+2. **Type safety** - Pydantic models throughout
+3. **SOLID principles** - Single responsibility, dependency inversion
+4. **Clean architecture** - Domain-driven design
+5. **Testability** - Pure functions, dependency injection
+6. **Documentation** - Comprehensive docstrings
 
 ## License
 
-GNU General Public License v3.0 - See [LICENSE](LICENSE) for details
-
-## Support
-
-- **Documentation**: [docs/cli/](docs/cli/)
-- **Issues**: [GitHub Issues](https://github.com/bruadam/hvx/issues)
-- **Quick Start**: [docs/QUICKSTART.md](docs/QUICKSTART.md)
-
-## Acknowledgments
-
-Built for facility management and building performance analysis. Open source, transparent, and extensible.
+Proprietary - HVX Analytics

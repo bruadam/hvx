@@ -1,9 +1,0 @@
-description: "Temperature Category III compliance during heating season (opening hours)"
-feature: temperature
-filter: opening_hours
-period: heating_season
-mode: bidirectional
-limits:
-  lower: 19
-  upper: 25
-category: EN16798-1

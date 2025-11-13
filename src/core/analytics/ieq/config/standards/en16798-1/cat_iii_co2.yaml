@@ -1,7 +1,0 @@
-description: "CO2 Category III compliance (opening hours)"
-feature: co2
-filter: opening_hours
-period: all_year
-mode: unidirectional_ascending
-limit: 1600
-category: EN16798-1
