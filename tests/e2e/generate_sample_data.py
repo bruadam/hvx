@@ -131,7 +131,7 @@ def create_building_c():
     # Building metadata
     metadata = {
         "name": "School Building",
-        "type": "education",
+        "type": "school",
         "address": "789 Learning Lane",
         "city": "Odense",
         "country": "Denmark",

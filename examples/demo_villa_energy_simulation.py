@@ -20,7 +20,7 @@ from core.domain.enums.building_type import BuildingType
 from core.domain.enums.heating import HeatingType
 from core.domain.enums.ventilation import VentilationType
 from core.domain.enums.countries import Country
-from core.domain.enums.belgium_region import BelgiumRegion
+from core.domain.enums.belgium_region import Region
 from core.domain.enums.epc import EPCRating
 from core.utils.energy_conversion import (
     convert_to_kwh,
@@ -41,7 +41,7 @@ def simulate_villa():
     villa_area = 200.0  # m²
     occupants = 2
     country = Country.BELGIUM  # Belgium
-    region = BelgiumRegion.WALLONIA  # Wallonia region
+    region = Region.BE_WALLONIA  # Wallonia region
     
     print("\n--- Villa Characteristics ---")
     print(f"Building Type: Residential Villa")

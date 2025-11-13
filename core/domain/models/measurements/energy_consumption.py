@@ -3,23 +3,24 @@
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import Field, field_validator
 
 from core.domain.enums.countries import Country
+from core.domain.models.base.base_measurement import UtilityConsumption
 
 
-class EnergyConsumption(BaseModel):
+class EnergyConsumption(UtilityConsumption):
     """
     Tracks energy consumption data for a building across different systems.
 
     Supports multiple units with automatic conversion to kWh for EPC calculations.
+    Extends UtilityConsumption with energy-specific fields and EPC calculation support.
+
+    Legacy fields are maintained for backward compatibility but internally
+    managed through the consumption_by_source and production_by_source dicts.
     """
 
-    # Measurement period
-    measurement_start: datetime = Field(..., description="Start of measurement period")
-    measurement_end: datetime = Field(..., description="End of measurement period")
-
-    # Heating consumption
+    # Heating consumption (legacy fields - maintained for compatibility)
     heating_kwh: float = Field(default=0.0, ge=0, description="Heating energy consumption in kWh")
     heating_gas_m3: float | None = Field(default=None, ge=0, description="Natural gas consumption in m³")
     heating_oil_liters: float | None = Field(default=None, ge=0, description="Heating oil consumption in liters")
@@ -44,13 +45,50 @@ class EnergyConsumption(BaseModel):
     # Water consumption (for reference, not part of EPC)
     cold_water_m3: float | None = Field(default=None, ge=0, description="Cold water consumption in m³")
 
-    # Renewable energy generation (reduces EPC rating)
+    # Renewable energy generation (legacy fields)
     solar_pv_kwh: float | None = Field(default=0.0, ge=0, description="Solar PV energy generated in kWh")
     wind_kwh: float | None = Field(default=0.0, ge=0, description="Wind energy generated in kWh")
     other_renewable_kwh: float | None = Field(default=0.0, ge=0, description="Other renewable energy in kWh")
 
-    # Metadata
-    notes: str | None = Field(default=None, description="Additional notes about the consumption data")
+    def model_post_init(self, __context: Any) -> None:
+        """Post-initialization to sync legacy fields with base consumption dicts."""
+        # Sync to consumption_by_source
+        if self.heating_kwh > 0:
+            self.consumption_by_source["heating"] = self.heating_kwh
+        if self.cooling_kwh > 0:
+            self.consumption_by_source["cooling"] = self.cooling_kwh
+        if self.electricity_kwh > 0:
+            self.consumption_by_source["electricity"] = self.electricity_kwh
+        if self.hot_water_kwh > 0:
+            self.consumption_by_source["hot_water"] = self.hot_water_kwh
+        if self.ventilation_kwh > 0:
+            self.consumption_by_source["ventilation"] = self.ventilation_kwh
+
+        # Add raw sources for conversion
+        if self.heating_gas_m3:
+            self.consumption_by_source["heating_gas_m3"] = self.heating_gas_m3
+        if self.heating_oil_liters:
+            self.consumption_by_source["heating_oil_liters"] = self.heating_oil_liters
+        if self.heating_district_kwh:
+            self.consumption_by_source["heating_district"] = self.heating_district_kwh
+
+        # Sync to production_by_source
+        if self.solar_pv_kwh and self.solar_pv_kwh > 0:
+            self.production_by_source["solar_pv"] = self.solar_pv_kwh
+        if self.wind_kwh and self.wind_kwh > 0:
+            self.production_by_source["wind"] = self.wind_kwh
+        if self.other_renewable_kwh and self.other_renewable_kwh > 0:
+            self.production_by_source["other_renewable"] = self.other_renewable_kwh
+
+        # Set conversion factors
+        self.conversion_factors = {
+            "gas_m3_to_kwh": 10.0,  # 1 m³ natural gas ≈ 10.0 kWh
+            "oil_liters_to_kwh": 10.0,  # 1 liter heating oil ≈ 10.0 kWh
+            "hot_water_liters_to_kwh": 0.058,  # Heating water from 10°C to 60°C
+        }
+
+        # Set unit
+        self.unit = "kWh"
 
     @property
     def total_heating_kwh(self) -> float:
@@ -58,12 +96,10 @@ class EnergyConsumption(BaseModel):
         total = self.heating_kwh
 
         # Convert natural gas (m³ to kWh)
-        # 1 m³ natural gas ≈ 10.0 kWh (typical conversion factor)
         if self.heating_gas_m3:
             total += self.heating_gas_m3 * 10.0
 
         # Convert heating oil (liters to kWh)
-        # 1 liter heating oil ≈ 10.0 kWh (typical conversion factor)
         if self.heating_oil_liters:
             total += self.heating_oil_liters * 10.0
 
@@ -95,9 +131,6 @@ class EnergyConsumption(BaseModel):
         total = self.hot_water_kwh
 
         # Convert liters to kWh
-        # Assuming: heating water from 10°C to 60°C (ΔT = 50K)
-        # Energy = Volume (L) × 4.18 kJ/(L·K) × ΔT / 3600 (to convert to kWh)
-        # ≈ Volume (L) × 0.058 kWh/L
         if self.hot_water_liters:
             total += self.hot_water_liters * 0.058
 
@@ -112,11 +145,6 @@ class EnergyConsumption(BaseModel):
             (self.other_renewable_kwh or 0.0)
         )
 
-    @property
-    def measurement_period_days(self) -> int:
-        """Get the measurement period in days."""
-        return (self.measurement_end - self.measurement_start).days
-
     def annualize(self) -> "EnergyConsumption":
         """
         Convert consumption to annual values if measurement period is not 365 days.
@@ -124,11 +152,10 @@ class EnergyConsumption(BaseModel):
         Returns:
             New EnergyConsumption instance with annualized values
         """
-        days = self.measurement_period_days
-        if days == 0:
-            raise ValueError("Measurement period cannot be zero days")
+        if self.is_annual():
+            return self
 
-        factor = 365.0 / days
+        factor = self.get_annualization_factor()
 
         return EnergyConsumption(
             measurement_start=self.measurement_start,
@@ -149,7 +176,7 @@ class EnergyConsumption(BaseModel):
             solar_pv_kwh=self.solar_pv_kwh * factor if self.solar_pv_kwh else None,
             wind_kwh=self.wind_kwh * factor if self.wind_kwh else None,
             other_renewable_kwh=self.other_renewable_kwh * factor if self.other_renewable_kwh else None,
-            notes=f"Annualized from {days} days: {self.notes or ''}"
+            notes=f"Annualized from {self.measurement_period_days} days: {self.notes or ''}"
         )
 
     def calculate_primary_energy(
@@ -172,7 +199,7 @@ class EnergyConsumption(BaseModel):
         from core.domain.enums.epc import EPCRating
 
         # Annualize if needed
-        if self.measurement_period_days != 365:
+        if not self.is_annual():
             consumption = self.annualize()
         else:
             consumption = self

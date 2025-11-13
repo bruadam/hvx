@@ -7,7 +7,7 @@ Based on official European EPBD country implementations.
 from enum import Enum
 from typing import Optional
 
-from .belgium_region import BelgiumRegion
+from .belgium_region import Region
 from .countries import Country
 
 
@@ -117,6 +117,7 @@ class EPCRating(str, Enum):
                 "G": (225, float('inf')),
             },
 
+            # Include all Belgium regions, user can select region separately
             Country.BELGIUM: {  # Flanders - Primary Energy
                 "A+": (0, 22),
                 "A": (22, 90),
@@ -303,7 +304,7 @@ class EPCRating(str, Enum):
         return thresholds.get(country, {})
 
     @staticmethod
-    def get_belgium_region_thresholds(region: BelgiumRegion) -> dict[str, tuple[float, float]]:
+    def get_belgium_region_thresholds(region: Region) -> dict[str, tuple[float, float]]:
         """
         Get EPC rating thresholds for a specific Belgian region.
 
@@ -317,7 +318,7 @@ class EPCRating(str, Enum):
             max value of float('inf') indicates no upper limit
         """
         thresholds = {
-            BelgiumRegion.FLANDERS: {  # Vlaanderen - Primary Energy
+            Region.BE_FLANDERS: {  # Vlaanderen - Primary Energy
                 "A+": (0, 22),
                 "A": (22, 90),
                 "B": (90, 123),
@@ -328,7 +329,7 @@ class EPCRating(str, Enum):
                 "G": (395, float('inf')),
             },
 
-            BelgiumRegion.WALLONIA: {  # Wallonie - Primary Energy
+            Region.BE_WALLONIA: {  # Wallonie - Primary Energy
                 "A+": (0, 45),
                 "A": (45, 85),
                 "B": (85, 170),
@@ -339,7 +340,7 @@ class EPCRating(str, Enum):
                 "G": (510, float('inf')),
             },
 
-            BelgiumRegion.BRUSSELS: {  # Bruxelles - Primary Energy
+            Region.BE_BRUSSELS: {  # Bruxelles - Primary Energy
                 "A+": (0, 45),
                 "A": (45, 95),
                 "B": (95, 150),
@@ -394,7 +395,7 @@ class EPCRating(str, Enum):
     def calculate_from_energy_consumption(
         energy_kwh_per_m2: float,
         country: Country,
-        belgium_region: BelgiumRegion | None = None
+        belgium_region: Region | None = None
     ) -> Optional["EPCRating"]:
         """
         Calculate EPC rating from energy consumption.

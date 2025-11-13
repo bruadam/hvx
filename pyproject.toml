@@ -34,6 +34,8 @@ dependencies = [
     "rich>=13.0.0",
     "openpyxl>=3.1.0",  # Excel support
     "python-dateutil>=2.8.0",
+    "brickschema>=0.6.0",  # Brick Schema ontology
+    "rdflib>=7.0.0",  # RDF graph support
 ]
 
 
