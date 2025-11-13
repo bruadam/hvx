@@ -147,22 +147,7 @@ class SpatialEntity(BaseModel):
     metadata: Dict[str, Any] = Field(default_factory=dict)
 
 
-class Portfolio(SpatialEntity):
-    type: SpatialEntityType = SpatialEntityType.PORTFOLIO
-
-
-class Building(SpatialEntity):
-    type: SpatialEntityType = SpatialEntityType.BUILDING
-
-
-class Floor(SpatialEntity):
-    type: SpatialEntityType = SpatialEntityType.FLOOR
-
-
-class Room(SpatialEntity):
-    type: SpatialEntityType = SpatialEntityType.ROOM
-
-
+# Simple Zone entity (Portfolio, Building, Floor, Room are imported from entities.py)
 class Zone(SpatialEntity):
     type: SpatialEntityType = SpatialEntityType.ZONE
 
@@ -447,3 +432,66 @@ class PredictionComparison(BaseModel):
     bias: Optional[float] = None
 
     other_metrics: Dict[str, Any] = Field(default_factory=dict)
+
+
+# ============================================================
+#  IMPORT ENHANCED ENTITY IMPLEMENTATIONS
+# ============================================================
+
+# Import enhanced Portfolio, Building, Floor, Room implementations
+# These replace the simple stub classes defined above
+from .entities import (
+    Portfolio,
+    Building,
+    Floor,
+    Room,
+)
+
+# Re-export all enhanced entities
+__all__ = [
+    # Enums
+    "SpatialEntityType",
+    "VentilationType",
+    "MetricType",
+    "TimeSeriesType",
+    "PointType",
+    "RuleOperator",
+    "Season",
+    "StandardType",
+    "AggregatorType",
+    "DynamicFunctionType",
+    "AnalysisStatus",
+    "AnalysisType",
+    "ModelType",
+
+    # Base entities
+    "SpatialEntity",
+    "Portfolio",
+    "Building",
+    "Floor",
+    "Room",
+    "Zone",
+
+    # Data sources
+    "MeteringPoint",
+    "TimeSeries",
+
+    # Rules
+    "ApplicabilityCondition",
+    "TestRule",
+    "RuleSet",
+    "Aggregator",
+
+    # Analytics
+    "BaseAnalysis",
+    "TestResult",
+    "ComplianceAnalysis",
+    "AggregatedAnalysis",
+    "ForecastAnalysis",
+    "EnergySignatureAnalysis",
+
+    # Simulation
+    "SimulationModel",
+    "SimulationRun",
+    "PredictionComparison",
+]
