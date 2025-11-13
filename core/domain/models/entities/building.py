@@ -1,7 +1,7 @@
 """Building domain entity."""
 
 from datetime import datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from pydantic import Field
 
@@ -13,6 +13,11 @@ from core.domain.enums.heating import HeatingType
 from core.domain.enums.hvac import HVACType
 from core.domain.enums.ventilation import VentilationType
 from core.domain.models.base.base_entity import HierarchicalEntity
+
+if TYPE_CHECKING:
+    from core.domain.models.analysis.building_analysis import BuildingAnalysis
+    from core.domain.models.analysis.room_analysis import RoomAnalysis
+    from core.domain.value_objects.recommendation import Recommendation
 
 
 class Building(HierarchicalEntity[str]):
@@ -463,6 +468,245 @@ class Building(HierarchicalEntity[str]):
         self.metrics_computed_at = datetime.now()
         
         return results
+    
+    def aggregate_room_analyses(
+        self,
+        room_analyses: list["RoomAnalysis"],
+        force_recompute: bool = False
+    ) -> "BuildingAnalysis":
+        """
+        Aggregate room-level analyses into building-level analysis.
+        
+        This method performs building-level aggregation of room compliance metrics,
+        quality scores, and recommendations. Results are cached.
+        
+        Args:
+            room_analyses: List of RoomAnalysis objects from child rooms
+            force_recompute: If True, recompute even if cached
+            
+        Returns:
+            BuildingAnalysis with aggregated metrics
+            
+        Example:
+            # Analyze all rooms
+            room_analyses = [room.compute_metrics(tests=tests) for room in rooms]
+            
+            # Aggregate at building level
+            building_analysis = building.aggregate_room_analyses(room_analyses)
+            
+            # Access aggregated metrics
+            print(building_analysis.avg_compliance_rate)
+            print(building_analysis.worst_performing_rooms)
+        """
+        from core.domain.enums.priority import Priority
+        from core.domain.enums.status import Status
+        from core.domain.models.analysis.building_analysis import BuildingAnalysis
+        from core.domain.value_objects.recommendation import Recommendation
+        
+        # Return cached if available
+        if not force_recompute and self.has_metric('building_analysis'):
+            return self.get_metric('building_analysis')
+        
+        if not room_analyses:
+            # Create empty analysis
+            analysis = BuildingAnalysis(
+                entity_id=self.id,
+                entity_name=self.name,
+                status=Status.FAILED,
+                critical_issues=["No room analyses available"],
+            )
+            self.set_metric('building_analysis', analysis)
+            return analysis
+        
+        # Initialize building analysis
+        analysis = BuildingAnalysis(
+            entity_id=self.id,
+            entity_name=self.name,
+            analysis_timestamp=datetime.now(),
+            status=Status.COMPLETED,
+        )
+        
+        # Collect structure references (use child_ids for room_ids, it's aliased)
+        analysis.child_ids = [ra.room_id for ra in room_analyses]
+        analysis.level_ids = list({ra.level_id for ra in room_analyses if ra.level_id})
+        
+        # Calculate average metrics
+        if room_analyses:
+            total_compliance = sum(ra.overall_compliance_rate for ra in room_analyses)
+            analysis.compliance_rate = total_compliance / len(room_analyses)
+            
+            total_quality = sum(ra.quality_score for ra in room_analyses)
+            analysis.quality_score = total_quality / len(room_analyses)
+        
+        # Aggregate test results across rooms
+        analysis.test_aggregations = self._aggregate_test_results(room_analyses)
+        
+        # Aggregate parameter statistics
+        analysis.parameter_statistics = self._aggregate_parameter_stats(room_analyses)
+        
+        # Store best and worst performing rooms
+        best_rooms = self._rank_rooms(room_analyses, ascending=False, top_n=5)
+        worst_rooms = self._rank_rooms(room_analyses, ascending=True, top_n=5)
+        self.set_metric('best_performing_rooms', best_rooms)
+        self.set_metric('worst_performing_rooms', worst_rooms)
+        
+        # Aggregate issues and recommendations
+        analysis.critical_issues = self._aggregate_issues(room_analyses)
+        analysis.recommendations = self._aggregate_recommendations(room_analyses)
+        
+        # Cache the analysis
+        self.set_metric('building_analysis', analysis)
+        self.metrics_computed_at = datetime.now()
+        
+        return analysis
+    
+    def _aggregate_test_results(
+        self,
+        room_analyses: list["RoomAnalysis"]
+    ) -> dict[str, dict[str, Any]]:
+        """Aggregate test results across all rooms."""
+        test_aggs = {}
+        
+        # Collect all test IDs
+        all_test_ids: set[str] = set()
+        for ra in room_analyses:
+            all_test_ids.update(ra.compliance_results.keys())
+        
+        # Aggregate each test
+        for test_id in all_test_ids:
+            rates = []
+            total_violations = 0
+            rooms_tested = 0
+            
+            for ra in room_analyses:
+                if test_id in ra.compliance_results:
+                    result = ra.compliance_results[test_id]
+                    rates.append(result.compliance_rate)
+                    total_violations += result.violation_count
+                    rooms_tested += 1
+            
+            if rooms_tested > 0:
+                test_aggs[test_id] = {
+                    "avg_compliance_rate": sum(rates) / len(rates),
+                    "min_compliance_rate": min(rates),
+                    "max_compliance_rate": max(rates),
+                    "total_violations": total_violations,
+                    "rooms_tested": rooms_tested,
+                    "rooms_passed": sum(1 for r in rates if r >= 95),
+                }
+        
+        return test_aggs
+    
+    def _aggregate_parameter_stats(
+        self,
+        room_analyses: list["RoomAnalysis"]
+    ) -> dict[str, dict[str, float]]:
+        """Aggregate parameter statistics across rooms."""
+        param_stats = {}
+        
+        # Collect all parameters
+        all_params: set[str] = set()
+        for ra in room_analyses:
+            all_params.update(ra.parameter_statistics.keys())
+        
+        # Aggregate each parameter
+        for param in all_params:
+            means = []
+            mins = []
+            maxs = []
+            
+            for ra in room_analyses:
+                if param in ra.parameter_statistics:
+                    stats = ra.parameter_statistics[param]
+                    if "mean" in stats:
+                        means.append(stats["mean"])
+                    if "min" in stats:
+                        mins.append(stats["min"])
+                    if "max" in stats:
+                        maxs.append(stats["max"])
+            
+            if means:
+                param_stats[param] = {
+                    "building_avg": sum(means) / len(means),
+                    "building_min": min(mins) if mins else 0,
+                    "building_max": max(maxs) if maxs else 0,
+                    "rooms_with_data": len(means),
+                }
+        
+        return param_stats
+    
+    def _rank_rooms(
+        self,
+        room_analyses: list["RoomAnalysis"],
+        ascending: bool = True,
+        top_n: int = 5,
+    ) -> list[dict[str, Any]]:
+        """Rank rooms by compliance rate."""
+        sorted_rooms = sorted(
+            room_analyses,
+            key=lambda ra: ra.overall_compliance_rate,
+            reverse=not ascending,
+        )
+        
+        return [
+            {
+                "room_id": ra.room_id,
+                "room_name": ra.room_name,
+                "compliance_rate": round(ra.overall_compliance_rate, 2),
+                "test_count": ra.test_count,
+                "violations": ra.total_violations,
+            }
+            for ra in sorted_rooms[:top_n]
+        ]
+    
+    def _aggregate_issues(self, room_analyses: list["RoomAnalysis"]) -> list[str]:
+        """Aggregate critical issues from rooms."""
+        issues = set()
+        
+        for ra in room_analyses:
+            for issue in ra.critical_issues:
+                # Generalize room-specific issues to building level
+                generalized = issue.replace(f"Room {ra.room_name}: ", "")
+                issues.add(generalized)
+        
+        return sorted(issues)[:10]  # Top 10 issues
+    
+    def _aggregate_recommendations(
+        self,
+        room_analyses: list["RoomAnalysis"]
+    ) -> list["Recommendation"]:
+        """Aggregate recommendations from rooms."""
+        from core.domain.enums.priority import Priority
+        from core.domain.value_objects.recommendation import Recommendation
+        
+        # Count frequency of similar recommendations by title
+        rec_counts: dict[str, tuple[Recommendation, int]] = {}
+        
+        for ra in room_analyses:
+            for rec in ra.recommendations:
+                # Group by title
+                title = rec.title
+                if title in rec_counts:
+                    count = rec_counts[title][1] + 1
+                    rec_counts[title] = (rec, count)
+                else:
+                    rec_counts[title] = (rec, 1)
+        
+        # Sort by frequency and return top recommendations
+        sorted_recs = sorted(
+            rec_counts.values(),
+            key=lambda x: x[1],
+            reverse=True
+        )
+        
+        # Return top 10 recommendations, prioritizing high-priority ones
+        result = [rec for rec, count in sorted_recs[:10]]
+        
+        # Sort by priority within the result
+        priority_order = {Priority.CRITICAL: 0, Priority.HIGH: 1, Priority.MEDIUM: 2, Priority.LOW: 3}
+        result.sort(key=lambda r: priority_order.get(r.priority, 99))
+        
+        return result
     
     def get_metrics(self) -> dict[str, Any]:
         """

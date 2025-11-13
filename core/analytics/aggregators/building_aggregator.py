@@ -5,14 +5,21 @@ from typing import Any
 
 from core.domain.enums.priority import Priority
 from core.domain.enums.status import Status
-from core.domain.models.building import Building
-from core.domain.models.building_analysis import BuildingAnalysis
-from core.domain.models.room_analysis import RoomAnalysis
+from core.domain.models.entities.building import Building
+from core.domain.models.analysis.building_analysis import BuildingAnalysis
+from core.domain.models.analysis.room_analysis import RoomAnalysis
 from core.domain.value_objects.recommendation import Recommendation
 
 
 class BuildingAggregator:
-    """Aggregate room analyses into building-level analysis."""
+    """
+    Aggregate room analyses into building-level analysis.
+    
+    DEPRECATED: This class is now a thin wrapper around building self-aggregation.
+    Prefer using building.aggregate_room_analyses() directly for new code.
+    
+    Maintained for backward compatibility with existing code.
+    """
 
     @staticmethod
     def aggregate(
@@ -21,6 +28,10 @@ class BuildingAggregator:
     ) -> BuildingAnalysis:
         """
         Aggregate multiple room analyses into building analysis.
+        
+        DEPRECATED: Use building.aggregate_room_analyses(room_analyses) instead.
+        
+        This method now delegates to the building's self-aggregation capability.
 
         Args:
             building: Building entity
@@ -29,8 +40,8 @@ class BuildingAggregator:
         Returns:
             BuildingAnalysis with aggregated metrics
         """
-        if not room_analyses:
-            return BuildingAggregator._create_empty_analysis(building)
+        # Delegate to building's self-aggregation method
+        return building.aggregate_room_analyses(room_analyses)
 
         # Initialize building analysis
         analysis = BuildingAnalysis(
@@ -247,8 +258,8 @@ class BuildingAggregator:
     def _create_empty_analysis(building: Building) -> BuildingAnalysis:
         """Create empty analysis when no room data available."""
         return BuildingAnalysis(
-            building_id=building.id,
-            building_name=building.name,
+            entity_id=building.id,
+            entity_name=building.name,
             status=Status.FAILED,
             critical_issues=["No room analyses available"],
         )

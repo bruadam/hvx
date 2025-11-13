@@ -4,17 +4,25 @@ from typing import Any
 
 from core.analytics.aggregators.building_aggregator import BuildingAggregator
 from core.analytics.engine.analysis_engine import AnalysisEngine
-from core.domain.models.building import Building
-from core.domain.models.building_analysis import BuildingAnalysis
-from core.domain.models.room import Room
-from core.domain.models.room_analysis import RoomAnalysis
+from core.domain.models.entities.building import Building
+from core.domain.models.analysis.building_analysis import BuildingAnalysis
+from core.domain.models.entities.room import Room
+from core.domain.models.analysis.room_analysis import RoomAnalysis
 
 
 class RunAnalysisUseCase:
-    """Use case for running IEQ analysis on rooms and buildings."""
+    """
+    Use case for running IEQ analysis on rooms and buildings.
+    
+    This is now a thin wrapper around entity self-analysis methods.
+    Entities (Room, Building) now perform their own analysis internally.
+    
+    Maintained for backward compatibility and as a clean application layer interface.
+    """
 
     def __init__(self):
         """Initialize use case."""
+        # Keep these for backward compatibility, but they delegate to entities now
         self.analysis_engine = AnalysisEngine()
         self.building_aggregator = BuildingAggregator()
 

@@ -13,9 +13,9 @@ from core.domain.enums.parameter_type import ParameterType
 from core.domain.enums.priority import Priority
 from core.domain.enums.standard_type import StandardType
 from core.domain.enums.status import Status
-from core.domain.models.compliance_result import ComplianceResult
-from core.domain.models.room import Room
-from core.domain.models.room_analysis import RoomAnalysis
+from core.domain.models.validation.compliance_result import ComplianceResult
+from core.domain.models.entities.room import Room
+from core.domain.models.analysis.room_analysis import RoomAnalysis
 from core.domain.value_objects.compliance_threshold import ComplianceThreshold
 from core.domain.value_objects.recommendation import Recommendation
 
@@ -23,8 +23,12 @@ from core.domain.value_objects.recommendation import Recommendation
 class AnalysisEngine:
     """
     Main analytics engine for IEQ analysis.
-
+    
+    DEPRECATED: This class is now a thin wrapper around entity self-analysis methods.
+    Prefer using room.compute_metrics() directly for new code.
+    
     Coordinates evaluation, filtering, and aggregation of IEQ data.
+    Maintained for backward compatibility with existing code.
     """
 
     def __init__(self):
@@ -39,6 +43,10 @@ class AnalysisEngine:
     ) -> RoomAnalysis:
         """
         Perform complete analysis of room data.
+        
+        DEPRECATED: Use room.compute_metrics(tests=tests, apply_filters=apply_filters) instead.
+        
+        This method now delegates to the room's self-analysis capability.
 
         Args:
             room: Room entity with time series data
@@ -49,52 +57,13 @@ class AnalysisEngine:
         Returns:
             RoomAnalysis with complete results
         """
-        if not room.has_data:
+        # Delegate to room's self-analysis method
+        analysis = room.compute_metrics(tests=tests, apply_filters=apply_filters)
+        
+        # Ensure we return a valid analysis (compute_metrics returns None only for no data)
+        if analysis is None:
             return self._create_empty_analysis(room)
-
-        # Initialize analysis
-        analysis = RoomAnalysis(
-            room_id=room.id,
-            room_name=room.name,
-            level_id=room.level_id,
-            building_id=room.building_id,
-            data_time_range=room.data_time_range,
-            status=Status.IN_PROGRESS,
-        )
-
-        # Calculate data quality
-        analysis.data_completeness = room.get_data_completeness()
-        analysis.data_quality_score = self._calculate_room_quality_score(room)
-
-        # Calculate parameter statistics
-        for parameter in room.available_parameters:
-            series = room.get_parameter_data(parameter)
-            if series is not None:
-                stats = StatisticalMetrics.calculate_basic_statistics(series)
-                analysis.parameter_statistics[parameter.value] = stats
-
-        # Run compliance tests
-        if tests:
-            for test_config in tests:
-                try:
-                    result = self._run_single_test(room, test_config, apply_filters)
-                    standard = test_config.get("standard", "").lower()
-                    analysis.add_compliance_result(
-                        test_id=result.test_id,
-                        result=result,
-                        standard=standard if standard else None,
-                    )
-                except Exception as e:
-                    # Log error but continue with other tests
-                    print(f"Error running test {test_config.get('test_id')}: {e}")
-
-        # Generate recommendations
-        analysis.recommendations = self._generate_recommendations(analysis)
-
-        # Identify critical issues
-        analysis.critical_issues = self._identify_critical_issues(analysis)
-
-        analysis.status = Status.COMPLETED
+        
         return analysis
 
     def _run_single_test(
@@ -280,8 +249,8 @@ class AnalysisEngine:
     def _create_empty_analysis(self, room: Room) -> RoomAnalysis:
         """Create empty analysis result when no data available."""
         return RoomAnalysis(
-            room_id=room.id,
-            room_name=room.name,
+            entity_id=room.id,
+            entity_name=room.name,
             level_id=room.level_id,
             building_id=room.building_id,
             status=Status.FAILED,

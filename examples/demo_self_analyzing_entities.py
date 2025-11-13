@@ -121,105 +121,105 @@ def main() -> None:
     room2.data_start = room2.time_series_data.index.min()
     room2.data_end = room2.time_series_data.index.max()
     
-    # Simulate some metrics for demonstration
-    room1.set_metric('overall_compliance_rate', 85.5)
-    room1.set_metric('tail_overall_rating', 2)
-    room1.set_metric('en16798_category', 'II')
+    # Create simple compliance tests
+    tests = [
+        {
+            'test_id': 'temp_comfort',
+            'parameter': 'temperature',
+            'standard': 'en16798-1',
+            'threshold': {'lower': 20, 'upper': 26},
+            'compliance_level': 95.0
+        },
+        {
+            'test_id': 'co2_quality',
+            'parameter': 'co2',
+            'standard': 'en16798-1',
+            'threshold': {'upper': 800},
+            'compliance_level': 95.0
+        }
+    ]
     
-    room2.set_metric('overall_compliance_rate', 78.3)
-    room2.set_metric('tail_overall_rating', 3)
-    room2.set_metric('en16798_category', 'III')
+    # Rooms analyze themselves with actual compliance tests!
+    print("\n🔬 Room 1 analyzing itself with compliance tests...")
+    analysis1 = room1.compute_metrics(tests=tests, apply_filters=True)
+    if analysis1:
+        print(f"   ✓ Overall compliance: {analysis1.overall_compliance_rate:.1f}%")
+        print(f"   ✓ Data quality: {analysis1.quality_score:.1f}%")
+        print(f"   ✓ Tests performed: {analysis1.test_count}")
     
-    print(f"\n📐 Room 1 Metrics:")
-    print(f"   Compliance: {room1.get_metric('overall_compliance_rate')}%")
-    print(f"   TAIL Rating: {room1.get_metric('tail_overall_rating')}")
-    print(f"   EN16798 Category: {room1.get_metric('en16798_category')}")
-    
-    print(f"\n📐 Room 2 Metrics:")
-    print(f"   Compliance: {room2.get_metric('overall_compliance_rate')}%")
-    print(f"   TAIL Rating: {room2.get_metric('tail_overall_rating')}")
-    print(f"   EN16798 Category: {room2.get_metric('en16798_category')}")
-    
-    # Create level and add rooms
-    level1 = Level(
-        id="level-1",
-        name="Ground Floor",
-        floor_number=0
-    )
-    level1.add_room(room1.id)
-    level1.add_room(room2.id)
-    
-    # Level computes aggregated physical properties
-    rooms_dict = {room1.id: room1, room2.id: room2}
-    level1.compute_from_children(lambda id: rooms_dict[id])
-    
-    print(f"\n🏢 Level 1 - Physical Properties (aggregated from rooms):")
-    print(f"   Total Area: {level1.area} m² (from {room1.area} + {room2.area})")
-    print(f"   Total Volume: {level1.volume} m³")
-    print(f"   Total Occupancy: {level1.occupancy} people")
-    
-    # Level computes aggregated metrics
-    print("\n🔬 Level computing aggregated metrics from rooms...")
-    level_metrics = level1.compute_metrics(room_lookup=lambda id: rooms_dict[id])
-    
-    print(f"\n📊 Level 1 - Aggregated Metrics:")
-    print(f"   Rooms Analyzed: {level_metrics.get('rooms_analyzed', 0)}")
-    print(f"   Average Compliance: {level_metrics.get('average_compliance_rate', 0):.1f}%")
-    print(f"   Min Compliance: {level_metrics.get('min_compliance_rate', 0):.1f}%")
-    print(f"   Max Compliance: {level_metrics.get('max_compliance_rate', 0):.1f}%")
-    print(f"   Average TAIL Rating: {level_metrics.get('average_tail_rating', 0):.1f}")
-    print(f"   EN16798 Distribution: {level_metrics.get('en16798_category_distribution', {})}")
+    print("\n🔬 Room 2 analyzing itself with compliance tests...")
+    analysis2 = room2.compute_metrics(tests=tests, apply_filters=True)
+    if analysis2:
+        print(f"   ✓ Overall compliance: {analysis2.overall_compliance_rate:.1f}%")
+        print(f"   ✓ Data quality: {analysis2.quality_score:.1f}%")
+        print(f"   ✓ Tests performed: {analysis2.test_count}")
     
     # ============================================================================
-    # PART 3: Building-Level Self-Analysis (EPC)
+    # PART 3: Building-Level Aggregation
     # ============================================================================
     print("\n" + "=" * 80)
-    print("PART 3: BUILDING SELF-ANALYSIS (EPC)")
+    print("PART 3: BUILDING-LEVEL AGGREGATION")
     print("=" * 80)
     
-    # Create building with energy data
+    # Create building
     building = Building(
         id="building-1",
         name="Main Office Building",
         building_type=BuildingType.OFFICE,
         year_built=2015,
         address="123 Main St",
-        city="Brussels",
-        country=Country.BELGIUM,
-        region=Region.BE_BRUSSELS,
-        # Energy consumption data
-        annual_heating_kwh=50000,
-        annual_cooling_kwh=25000,
-        annual_electricity_kwh=75000,
-        annual_hot_water_kwh=10000,
-        annual_ventilation_kwh=15000,
-        # Renewable energy
-        annual_solar_pv_kwh=20000,
-        # Water
-        annual_water_m3=500
+        city="Brussels"
     )
     
-    building.add_level(level1.id)
+    # Building aggregates room analyses automatically!
+    print("\n🏢 Building aggregating room analyses...")
+    if analysis1 and analysis2:
+        building_analysis = building.aggregate_room_analyses([analysis1, analysis2])
+        
+        print(f"\n📊 Building Analysis (aggregated from {building_analysis.room_count} rooms):")
+        print(f"   Average Compliance: {building_analysis.avg_compliance_rate:.1f}%")
+        print(f"   Average Quality: {building_analysis.avg_quality_score:.1f}%")
+        
+        # Access cached best/worst rooms
+        best_rooms = building.get_metric('best_performing_rooms')
+        worst_rooms = building.get_metric('worst_performing_rooms')
+        if best_rooms:
+            print(f"   Best Room: {best_rooms[0]['room_name']} ({best_rooms[0]['compliance_rate']}%)")
+        if worst_rooms:
+            print(f"   Worst Room: {worst_rooms[0]['room_name']} ({worst_rooms[0]['compliance_rate']}%)")
+    
+    # ============================================================================
+    # PART 4: Building EPC and Energy Metrics
+    # ============================================================================
+    print("\n" + "=" * 80)
+    print("PART 4: BUILDING ENERGY PERFORMANCE")
+    print("=" * 80)
+    
+    # Add energy data to building
+    building.annual_heating_kwh = 50000
+    building.annual_cooling_kwh = 25000
+    building.annual_electricity_kwh = 75000
+    building.annual_hot_water_kwh = 10000
+    building.annual_ventilation_kwh = 15000
+    building.annual_solar_pv_kwh = 20000
+    building.country = Country.BELGIUM
+    building.region = Region.BE_BRUSSELS
+    
+    # Compute from children to get total area
+    building.area = (room1.area or 0) + (room2.area or 0)
     
     print(f"\n🏛️  Created {building.name}:")
     print(f"   Type: {building.building_type.value}")
-    print(f"   Location: {building.city}, {building.country.value if building.country else 'N/A'}")
-    print(f"   Region: {building.region.value if building.region else 'N/A'}")
+    print(f"   Location: {building.city}")
     
-    # Building computes area from level
-    levels_dict = {level1.id: level1}
-    building.compute_from_children(lambda id: levels_dict[id])
-    
-    print(f"\n📐 Physical Properties (aggregated from level):")
+    print(f"\n📐 Physical Properties:")
     print(f"   Total Area: {building.area} m²")
-    print(f"   Total Volume: {building.volume} m³")
-    print(f"   Total Occupancy: {building.occupancy} people")
     
     # Building analyzes itself for EPC!
     print("\n🔬 Building computing EPC and energy metrics...")
     building_metrics = building.compute_metrics(metrics=['epc', 'energy'])
     
-    print(f"\n📊 Building Metrics:")
+    print(f"\n📊 Building Energy Metrics:")
     print(f"   EPC Rating: {building_metrics.get('epc_rating_value', 'N/A')}")
     print(f"   Primary Energy: {building_metrics.get('primary_energy_kwh_m2', 0):.1f} kWh/m²/year")
     print(f"   Total Energy: {building_metrics.get('total_energy_kwh', 0):.0f} kWh/year")
@@ -233,41 +233,52 @@ def main() -> None:
     print(f"   Metrics computed at: {building.metrics_computed_at}")
     
     # ============================================================================
-    # PART 4: Benefits Summary
+    # PART 5: Benefits Summary
     # ============================================================================
     print("\n" + "=" * 80)
     print("✅ KEY BENEFITS OF SELF-ANALYZING ENTITIES")
     print("=" * 80)
     print("""
-    1. 📦 ENCAPSULATION
-       - Entities know how to analyze themselves
-       - No need for separate analysis services
-       - Business logic stays with domain models
+    1. 📦 FULL ENCAPSULATION
+       - Entities perform complete self-analysis
+       - room.compute_metrics(tests=tests) - runs compliance, quality, statistics
+       - building.aggregate_room_analyses() - aggregates results
+       - No external AnalysisEngine needed!
     
-    2. 🎯 SIMPLICITY
-       - room.compute_metrics() - that's it!
-       - building.compute_metrics() - auto-computes EPC
-       - level.compute_metrics() - aggregates from rooms
+    2. 🎯 RADICAL SIMPLICITY
+       - One method does everything: room.compute_metrics(tests=...)
+       - Building aggregates: building.aggregate_room_analyses([analyses])
+       - Energy metrics: building.compute_metrics(metrics=['epc', 'energy'])
     
-    3. 💾 CACHING
-       - Metrics stored directly in entity
-       - Fast access: room.get_metric('epc_rating')
+    3. 💾 INTELLIGENT CACHING
+       - All metrics stored directly in entity.computed_metrics
+       - Fast access: room.get_metric('overall_compliance_rate')
        - Automatic timestamp tracking
-    
-    4. 🔄 HIERARCHICAL
-       - Physical properties aggregate from children
-       - Metrics aggregate from children
-       - Consistent pattern across all levels
-    
-    5. 🔌 EXTENSIBLE
-       - Add new standards easily
-       - Metrics stored in flexible dict
-       - Standards: EN16798, TAIL, EPC, custom
-    
-    6. ⚡ ON-DEMAND
-       - Compute only when data available
        - Force recompute when needed
-       - Choose which metrics to compute
+    
+    4. 🔄 HIERARCHICAL AGGREGATION
+       - Buildings aggregate room analyses automatically
+       - Best/worst performing rooms identified
+       - Test results aggregated across all spaces
+       - Complete building-level insights
+    
+    5. 🔌 MAXIMUM EXTENSIBILITY
+       - Pass any tests configuration
+       - Add new standards easily
+       - Custom metrics stored in flexible dict
+       - Works with any compliance framework
+    
+    6. ⚡ ON-DEMAND + BACKWARD COMPATIBLE
+       - Direct: room.compute_metrics() for new code
+       - Compatible: AnalysisEngine still works (delegates to entities)
+       - Choose your approach - both work!
+       - Gradual migration path
+    
+    7. 🏗️ CLEAN ARCHITECTURE
+       - Domain entities own their analysis logic
+       - Use cases are thin wrappers
+       - Engines deprecated but available
+       - True domain-driven design
     """)
     
     print("\n" + "=" * 80)
