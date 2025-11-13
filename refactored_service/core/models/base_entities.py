@@ -44,17 +44,6 @@ class SpatialEntity(BaseModel):
     metadata: Dict[str, Any] = Field(default_factory=dict)
 
 
-class Zone(SpatialEntity):
-    """
-    Simple zone entity.
-
-    A zone is a logical grouping of rooms or spaces with similar
-    characteristics (e.g., same HVAC zone, same orientation).
-    """
-    type: SpatialEntityType = SpatialEntityType.ZONE
-
-
 __all__ = [
-    "SpatialEntity",
-    "Zone",
+    "SpatialEntity"
 ]
