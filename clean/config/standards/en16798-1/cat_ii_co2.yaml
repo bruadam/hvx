@@ -1,8 +1,0 @@
-description: "CO2 Category II compliance (opening hours)"
-parameter: co2
-filter: opening_hours
-period: all_year
-mode: unidirectional_ascending
-threshold:
-  upper: 1200
-category: EN16798-1

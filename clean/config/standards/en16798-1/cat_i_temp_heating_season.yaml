@@ -1,9 +1,0 @@
-description: "Temperature Category I compliance during heating season (opening hours)"
-parameter: temperature
-filter: opening_hours
-period: heating_season
-mode: bidirectional
-threshold:
-  lower: 21
-  upper: 23
-category: EN16798-1

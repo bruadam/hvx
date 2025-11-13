@@ -1,9 +1,0 @@
-description: "Humidity Category II compliance (opening hours)"
-parameter: humidity
-filter: opening_hours
-period: all_year
-mode: bidirectional
-threshold:
-  lower: 25
-  upper: 60
-category: EN16798-1

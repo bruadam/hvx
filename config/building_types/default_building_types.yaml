@@ -1,0 +1,167 @@
+# Default Building Type Configurations
+# 
+# This file defines the default building types and their characteristics.
+# Users can override these settings by creating a custom building types config file.
+#
+# Configuration format:
+#   building_type_id:
+#     display_name: "Human-readable name"
+#     typical_occupancy_hours:
+#       start: 8  # Hour in 24h format (0-23)
+#       end: 18   # Hour in 24h format (0-23)
+#     description: "Brief description of building type"
+#     supported: true  # Whether this type is fully supported
+
+# Office Buildings
+office:
+  display_name: "Office"
+  typical_occupancy_hours:
+    start: 8
+    end: 18
+  description: "Commercial office buildings with standard working hours"
+  supported: true
+  default_parameters:
+    - temperature
+    - co2
+    - humidity
+    - illuminance
+    - noise
+
+# Hospitality
+hotel:
+  display_name: "Hotel"
+  typical_occupancy_hours:
+    start: 0
+    end: 24  # 24/7 operation
+  description: "Hotel and hospitality buildings with 24-hour occupancy"
+  supported: true
+  default_parameters:
+    - temperature
+    - co2
+    - humidity
+    - noise
+
+# Educational
+school:
+  display_name: "School"
+  typical_occupancy_hours:
+    start: 8
+    end: 16
+  description: "Educational facilities including primary, secondary, and higher education"
+  supported: true
+  default_parameters:
+    - temperature
+    - co2
+    - humidity
+    - illuminance
+    - noise
+
+# Residential
+residential:
+  display_name: "Residential"
+  typical_occupancy_hours:
+    start: 0
+    end: 24  # 24/7 occupancy
+  description: "Residential buildings including apartments and houses"
+  supported: false
+  default_parameters:
+    - temperature
+    - co2
+    - humidity
+    - noise
+    - radon
+
+# Healthcare
+hospital:
+  display_name: "Hospital"
+  typical_occupancy_hours:
+    start: 0
+    end: 24  # 24/7 operation
+  description: "Healthcare facilities with continuous operation"
+  supported: false
+  default_parameters:
+    - temperature
+    - co2
+    - humidity
+    - illuminance
+    - noise
+    - pm25
+
+# Commercial Retail
+retail:
+  display_name: "Retail"
+  typical_occupancy_hours:
+    start: 9
+    end: 20
+  description: "Retail stores and shopping centers"
+  supported: false
+  default_parameters:
+    - temperature
+    - co2
+    - humidity
+    - illuminance
+
+# Research & Development
+laboratory:
+  display_name: "Laboratory"
+  typical_occupancy_hours:
+    start: 8
+    end: 18
+  description: "Research laboratories and R&D facilities"
+  supported: false
+  default_parameters:
+    - temperature
+    - co2
+    - humidity
+    - illuminance
+    - ventilation
+
+# Manufacturing
+industrial:
+  display_name: "Industrial"
+  typical_occupancy_hours:
+    start: 6
+    end: 22
+  description: "Industrial and manufacturing facilities"
+  supported: false
+  default_parameters:
+    - temperature
+    - co2
+    - humidity
+    - noise
+    - pm25
+    - pm10
+
+# Mixed Use
+mixed_use:
+  display_name: "Mixed Use"
+  typical_occupancy_hours:
+    start: 7
+    end: 22
+  description: "Buildings with multiple use types (e.g., retail + office + residential)"
+  supported: false
+  default_parameters:
+    - temperature
+    - co2
+    - humidity
+    - illuminance
+    - noise
+
+# Other/Unknown
+other:
+  display_name: "Other"
+  typical_occupancy_hours:
+    start: 8
+    end: 18
+  description: "Other or unspecified building types"
+  supported: false
+  default_parameters:
+    - temperature
+    - co2
+    - humidity
+
+# Notes:
+# - Hours use 24-hour format (0-23)
+# - For 24/7 facilities, use start: 0, end: 24
+# - Supported: true indicates full system support with validation
+# - default_parameters are typical parameters to monitor for this building type

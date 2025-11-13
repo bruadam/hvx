@@ -1,0 +1,152 @@
+# Worst Performing Room - Climate-Driven Analysis Report
+# Comprehensive report focusing on identifying worst performing room,
+# diagnosing the root cause, showing climate correlations, and providing
+# targeted, evidence-based recommendations.
+
+template_name: "worst_room_climate_analysis"
+report_type: "building"
+title: "Worst Performing Room - Root Cause & Climate Analysis"
+description: "Deep-dive analysis of the worst performing room with climate correlation, heatmaps, trends, and targeted recommendations"
+author: "IEQ Analytics Platform"
+
+# Room filtering - identify and focus on THE worst performing room
+room_filter:
+  mode: "bottom_n"  # Get worst performers
+  n: 1  # Focus on single worst room
+  sort_by: "compliance"  # Sort by compliance rate
+  ascending: true  # Worst first
+  compliance_threshold: 100.0  # Include all rooms in ranking
+
+# Report sections - comprehensive analysis workflow
+sections:
+  # Executive Summary - What's the problem?
+  - type: "summary"
+    title: "Executive Summary - Worst Performing Room"
+    description: "Critical overview of the most problematic room requiring immediate attention"
+
+  # KPI Dashboard - Quick metrics at a glance
+  - type: "chart"
+    title: "Room Performance Dashboard"
+    description: "Key performance indicators for the worst performing room"
+    chart:
+      type: "building_kpi_dashboard"
+
+  # Compliance Overview - What standards are being violated?
+  - type: "chart"
+    title: "Compliance Rate by Parameter"
+    description: "Which parameters are failing and by how much"
+    chart:
+      type: "bar_test_comparison"
+      show_only_failing: false
+      sort: true
+      ascending: true
+
+  # Temporal Pattern Analysis - When do problems occur?
+  - type: "chart"
+    title: "Problem Hours - Compliance Heatmap (Hour x Day of Week)"
+    description: "Identify when violations occur throughout the week"
+    chart:
+      type: "heatmap_hourly_daily"
+      parameters: ["temperature"]
+      season: "all"
+
+  - type: "chart"
+    title: "Seasonal Pattern - Compliance Heatmap (Day x Month)"
+    description: "Long-term patterns showing seasonal trends"
+    chart:
+      type: "heatmap_daily_monthly"
+      parameters: ["temperature"]
+      year: null  # Current year
+
+  # Temperature Deep Dive - Main issue focus
+  - type: "chart"
+    title: "Temperature Violations Timeline - Winter Period"
+    description: "Detailed view of temperature violations during heating season (RED = non-compliant)"
+    chart:
+      type: "timeseries_compliance"
+      parameters: ["temperature"]
+      season: "winter"
+      show_threshold: true
+
+  - type: "chart"
+    title: "Temperature Violations Timeline - Summer Period"
+    description: "Detailed view of temperature violations during cooling season (RED = non-compliant)"
+    chart:
+      type: "timeseries_compliance"
+      parameters: ["temperature"]
+      season: "summer"
+      show_threshold: true
+
+  # Air Quality Analysis
+  - type: "chart"
+    title: "CO2 Levels Timeline"
+    description: "Indoor air quality violations throughout the year (RED = non-compliant)"
+    chart:
+      type: "timeseries_compliance"
+      parameters: ["co2"]
+      season: "all"
+      show_threshold: true
+
+  - type: "chart"
+    title: "CO2 Problem Hours Heatmap"
+    description: "When does poor air quality occur?"
+    chart:
+      type: "heatmap_hourly_daily"
+      parameters: ["co2"]
+      season: "all"
+
+  # Humidity Analysis (if applicable)
+  - type: "chart"
+    title: "Humidity Violations Timeline"
+    description: "Humidity compliance throughout the year"
+    chart:
+      type: "timeseries_compliance"
+      parameters: ["humidity"]
+      season: "all"
+      show_threshold: true
+
+  # Climate Correlation Analysis - What external factors drive the issues?
+  # Note: Climate correlation is built into the recommendation engine
+  # For now, this information is shown in the recommendations section
+
+  # Violation Intensity - How severe are the problems?
+  - type: "chart"
+    title: "Violation Timeline - Critical Periods"
+    description: "Timeline showing when and how severe violations occurred"
+    chart:
+      type: "violation_timeline"
+      parameters: ["temperature"]
+
+  # Comparative Context - How bad is this room compared to others?
+  - type: "chart"
+    title: "Room Ranking - Performance Comparison"
+    description: "How this room compares to all other rooms in the building"
+    chart:
+      type: "bar_room_comparison"
+      metric: "compliance"
+      sort: true
+      ascending: true
+      show_only_failing: false
+
+  # Detailed Metrics Table
+  - type: "table"
+    title: "Detailed Metrics - Worst Performing Room"
+    description: "Complete breakdown of all compliance tests and statistics"
+    show_statistics: true
+    show_violations: true
+    show_data_quality: true
+
+  # Evidence-Based Recommendations
+  - type: "recommendations"
+    title: "Targeted Improvement Actions"
+    description: "Evidence-based, prioritized recommendations driven by climate correlation analysis"
+    max_recommendations: 10
+
+# Output settings
+output_format: ["html"]
+include_interactive_charts: true
+theme: "professional"
+
+# Compliance settings
+compliance_standard: "EN16798-1"
+building_class: "II"
