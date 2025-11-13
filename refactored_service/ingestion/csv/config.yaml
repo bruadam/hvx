@@ -1,0 +1,7 @@
+id: "csv"
+name: "CSV File Import"
+type: "file"
+
+fields:
+  path_pattern: required
+  metric: required

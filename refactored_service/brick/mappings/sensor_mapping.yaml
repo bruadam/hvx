@@ -1,0 +1,5 @@
+SensorTypes:
+  temperature: "brick:Temperature_Sensor"
+  co2: "brick:CO2_Sensor"
+  humidity: "brick:Humidity_Sensor"
+  illuminance: "brick:Luminance_Sensor"
