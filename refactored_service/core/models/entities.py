@@ -10,11 +10,8 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional, Callable
 from pydantic import Field
 
-from . import (
-    SpatialEntity,
-    SpatialEntityType,
-    VentilationType,
-)
+from .base_entities import SpatialEntity
+from .enums import SpatialEntityType, VentilationType
 
 
 # ============================================================
