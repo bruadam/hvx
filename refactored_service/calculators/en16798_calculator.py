@@ -366,7 +366,7 @@ class EN16798Calculator:
                     "compliant": temp_ok,
                 }
                 compliant = compliant and temp_ok
-                adaptive_used = temp_thresholds.get("adaptive_model", False)
+                adaptive_used = bool(temp_thresholds.get("adaptive_model", False))
 
             # Check CO2
             if "co2" in measured_values:
@@ -408,7 +408,7 @@ class EN16798Calculator:
             compliance_by_category=compliance_details,
             thresholds_used=thresholds_used,
             season=season,
-            adaptive_model_used=adaptive_used,
+            adaptive_model_used=bool(adaptive_used),
         )
 
     @classmethod

@@ -33,11 +33,12 @@ class RCModelParameters:
     """Parameters for RC thermal model."""
     # Thermal resistances (K/W)
     R_exterior: float  # Exterior wall resistance
-    R_interior: Optional[float] = None  # Interior resistance (for 2R2C+)
-    R_boundary: Optional[float] = None  # Boundary resistance (for 3R3C)
 
     # Thermal capacitances (J/K)
     C_interior: float  # Interior thermal mass
+
+    R_interior: Optional[float] = None  # Interior resistance (for 2R2C+)
+    R_boundary: Optional[float] = None  # Boundary resistance (for 3R3C)
     C_exterior: Optional[float] = None  # Exterior thermal mass (for 2R2C+)
     C_air: Optional[float] = None  # Air thermal mass (for 3R3C)
 
@@ -194,7 +195,7 @@ class RCThermalModel:
         # Simulate based on model type
         if self.model_type == RCModelType.ONE_R_ONE_C:
             T_indoor, heating_power, cooling_power = self._simulate_1r1c(
-                outdoor_temperature.values,
+                outdoor_temperature.to_numpy(),
                 solar_gains,
                 internal_gains_array,
                 setpoint_heating,
@@ -204,7 +205,7 @@ class RCThermalModel:
             )
         elif self.model_type == RCModelType.TWO_R_TWO_C:
             T_indoor, heating_power, cooling_power = self._simulate_2r2c(
-                outdoor_temperature.values,
+                outdoor_temperature.to_numpy(),
                 solar_gains,
                 internal_gains_array,
                 setpoint_heating,
@@ -214,7 +215,7 @@ class RCThermalModel:
             )
         else:  # 3R3C
             T_indoor, heating_power, cooling_power = self._simulate_2r2c(
-                outdoor_temperature.values,
+                outdoor_temperature.to_numpy(),
                 solar_gains,
                 internal_gains_array,
                 setpoint_heating,
