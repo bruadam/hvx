@@ -1,0 +1,75 @@
+id: ventilation
+name: Ventilation Rate Simulation
+module: simulations.models.ventilation.VentilationCalculator
+description: Estimate air change rates from CO2 decay segments during unoccupied periods.
+version: 1
+spatial_scope:
+  run_on_types:
+    - room
+    - zone
+  rollup_from_children:
+    - room
+  aggregate_to_types:
+    - floor
+    - building
+    - portfolio
+requirements:
+  parameters:
+    required:
+      - parameter: co2
+        description: Indoor CO2 concentration (ppm) with timestamps to detect decay periods.
+    optional:
+      - parameter: volume_m3
+        description: Needed to express results as L/s per space.
+  metadata:
+    optional:
+      - path: area_m2
+        description: Supports weighted aggregation at upper levels.
+applicability:
+  building_types:
+    include:
+      - office
+      - education
+      - commercial
+      - healthcare
+      - hospitality
+      - industrial
+      - mixed_use
+      - public
+      - other
+  room_types:
+    include:
+      - open_office
+      - private_office
+      - meeting_room
+      - conference_room
+      - classroom
+      - lecture_hall
+      - auditorium
+      - cafeteria
+      - laboratory
+      - gym
+      - other
+outputs:
+  - key: ach
+    unit: air_changes_per_hour
+    description: Weighted average ACH across decay periods.
+  - key: ventilation_l_s
+    unit: liters_per_second
+    description: Equivalent airflow based on known volume.
+  - key: category
+    description: Qualitative ventilation band (poor/fair/good/excellent).
+  - key: quality_score
+    unit: fraction
+    description: R^2-based goodness-of-fit indicator.
+prerequisites: []
+aggregation:
+  type: weighted_average
+  metric: ach
+  weight_properties:
+    - area_m2
+    - volume_m3
+  rollup_targets:
+    - floor
+    - building
+    - portfolio

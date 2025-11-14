@@ -1,0 +1,94 @@
+id: rc_thermal
+name: RC Thermal Simulation
+module: simulations.models.rc_thermal.RCThermalModel
+description: Predict indoor temperature and HVAC loads using resistance-capacitance thermal models.
+version: 1
+spatial_scope:
+  run_on_types:
+    - room
+    - zone
+    - floor
+    - building
+  rollup_from_children:
+    - room
+    - zone
+    - floor
+  aggregate_to_types:
+    - building
+    - portfolio
+requirements:
+  parameters:
+    required:
+      - parameter: outdoor_temperature
+        description: Outdoor dry-bulb temperature time-series (°C).
+      - parameter: solar_irradiance
+        description: Global horizontal irradiance (W/m²) aligned with model timestep.
+    optional:
+      - parameter: internal_gains
+        description: Internal gain (W) timeseries overriding default q_internal.
+  metadata:
+    required:
+      - path: volume_m3
+        description: Needed to derive heat capacity.
+      - path: area_m2
+        description: Used for capacitance and load normalization.
+      - path: metadata.window_area_m2
+        description: Window surface area drives solar gains.
+    optional:
+      - path: metadata.construction_type
+        description: Selects between light/medium/heavy presets.
+      - path: metadata.shgc
+        description: Overrides solar heat gain coefficient if present.
+applicability:
+  building_types:
+    include:
+      - office
+      - education
+      - commercial
+      - healthcare
+      - hospitality
+      - industrial
+      - residential
+      - mixed_use
+      - public
+      - other
+  room_types:
+    include:
+      - open_office
+      - private_office
+      - meeting_room
+      - conference_room
+      - classroom
+      - laboratory
+      - auditorium
+      - cafeteria
+      - apartment
+      - hotel_room
+      - other
+outputs:
+  - key: temperature
+    unit: celsius
+    description: Predicted indoor air temperature profile.
+  - key: heating_power
+    unit: watts
+    description: HVAC heating demand at each timestep.
+  - key: cooling_power
+    unit: watts
+    description: HVAC cooling demand at each timestep.
+  - key: metrics
+    description: Summary KPIs such as avg temperature and heating/cooling energy.
+prerequisites:
+  - model_id: occupancy
+    optional: true
+    reason: Occupancy-derived internal gains can improve load accuracy when provided.
+  - model_id: ventilation
+    optional: true
+    reason: Using measured ACH refines infiltration assumptions.
+aggregation:
+  type: weighted_average
+  metric: total_heating_kwh
+  weight_properties:
+    - area_m2
+  rollup_targets:
+    - building
+    - portfolio

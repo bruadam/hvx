@@ -13,6 +13,8 @@ matplotlib>=3.10.7
 seaborn>=0.13.2
 scipy>=1.16.2
 pythermalcomfort>=2.8.0
+streamlit>=1.32.0
+holidays>=0.42
 
 # Semantic web and building ontology
 brickschema>=0.6.0

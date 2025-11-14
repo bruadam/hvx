@@ -1,5 +1,0 @@
-TimeSeriesUnits:
-  temperature: "brick:Degree_C"
-  co2: "brick:PPM"
-  humidity: "brick:Percent"
-  illuminance: "brick:Lux"

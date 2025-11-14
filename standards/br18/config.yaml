@@ -1,0 +1,59 @@
+id: "br18"
+name: "BR18 Danish Building Regulations"
+version: "2018.0"
+standard_type: "BR18"
+category_based: false
+description: "Danish building regulations 2018 - Indoor climate requirements for workplace and buildings"
+
+applicability:
+  countries: ["DK"]
+  regions: ["Denmark"]
+  continents: ["Europe"]
+  building_types: ["office", "school", "classroom", "meeting_room", "residential", "industrial", "retail"]
+  seasons: ["all_year"]
+
+required_inputs:
+  temperature: true
+  co2: true
+  ventilation_rate: false
+
+allow_partial_analysis: false
+
+# BR18 Indoor Climate Rules
+rules:
+  - id: "br18_temp_workspace"
+    name: "Temperature for Workspaces"
+    metric: "temperature"
+    operator: "between"
+    lower_bound: 20.0
+    upper_bound: 25.0
+    unit: "°C"
+    tolerance_hours: 100
+    applies_during: "occupied"
+    season: "all_year"
+    description: "Work spaces should typically stay between 20-25°C depending on the type of work"
+
+  - id: "br18_co2_max"
+    name: "Maximum CO2 Concentration"
+    metric: "co2"
+    operator: "<="
+    target_value: 1000
+    unit: "ppm"
+    tolerance_percentage: 5
+    applies_during: "occupied"
+    season: "all_year"
+    description: "CO2 content in indoor air must not exceed 1000 ppm for extended periods"
+
+# Ventilation requirements (informational)
+ventilation_requirements:
+  per_person: 10.0  # L/s per person
+  per_area: 0.35    # L/s per m² floor area
+  description: "Ventilation rates should be set at 10 L/s/person plus 0.35 L/s/m² floor area"
+
+# Additional guidelines
+guidelines:
+  air_quality: "Maintain good indoor air quality with effective ventilation systems"
+  energy_efficiency: "Building should be as energy efficient as possible"
+  co2_levels: "Ensure low CO2 levels through effective ventilation systems"
+
+analysis_module: "standards.br18.analysis:run"

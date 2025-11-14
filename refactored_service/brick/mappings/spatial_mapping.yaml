@@ -1,6 +1,0 @@
-SpatialEntity:
-  portfolio: "brick:Campus"
-  building: "brick:Building"
-  floor: "brick:Floor"
-  room: "brick:Room"
-  zone: "brick:HVAC_Zone"
