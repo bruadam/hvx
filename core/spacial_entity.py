@@ -147,13 +147,14 @@ class SpatialEntity(BaseModel):
 
             aggregated_value = aggregator.aggregate(values, weights or None) if values else None
             if aggregated_value is not None:
-                results[f"{aggregator.id}:{aggregate_key}"] = AnalysisResult(
-                    id=f"{self.id}:{aggregator.id}:{aggregate_key}",
-                    analysis_type=child_results[0].analysis_type if child_results else None,
-                    context=context,
-                    results={aggregate_key: aggregated_value},
-                    provenance={"aggregation": aggregator.type.value},
-                )
+                if aggregate_key is not None:
+                    results[f"{aggregator.id}:{aggregate_key}"] = AnalysisResult(
+                        id=f"{self.id}:{aggregator.id}:{aggregate_key}",
+                        analysis_type=child_results[0].analysis_type if child_results else None,
+                        context=context,
+                        results={str(aggregate_key): aggregated_value},
+                        provenance={"aggregation": aggregator.type.value},
+                    )
 
         if results:
             self.computed_metrics.setdefault("analysis_results", {}).update(results)
@@ -610,7 +611,11 @@ class SpatialEntity(BaseModel):
                     recursive=True,
                 )
                 if child_stats and 'values' in child_stats:
-                    all_values.extend(child_stats['values'])
+                    values = child_stats['values']
+                    if isinstance(values, list):
+                        all_values.extend(values)
+                    else:
+                        all_values.append(values)
                     rooms_analyzed += child_stats.get('rooms_analyzed', 0)
         
         if not all_values:
@@ -750,23 +755,9 @@ class SpatialEntity(BaseModel):
         Returns:
             Aggregated BR18 result with summed hours and room counts
         """
-        # Check if we're aggregating room-level or already-aggregated results
-        first_result = child_results[0] if child_results else {}
-        is_room_level = 'overall_pass' in first_result  # Room results have overall_pass
-        is_aggregated = 'rooms_total' in first_result  # Aggregated results have rooms_total
-        
-        if is_room_level:
-            # Aggregating from rooms
-            rooms_passed = sum(1 for r in child_results if r.get('overall_pass', False))
-            total_rooms = len(child_results)
-        elif is_aggregated:
-            # Aggregating from already-aggregated results (e.g., buildings -> portfolio)
-            rooms_passed = sum(r.get('rooms_passed_overall', 0) for r in child_results)
-            total_rooms = sum(r.get('rooms_total', 0) for r in child_results)
-        else:
-            # Unknown format
-            rooms_passed = 0
-            total_rooms = len(child_results)
+        # Count rooms that pass overall
+        rooms_passed = sum(1 for r in child_results if r.get('overall_pass', False))
+        total_rooms = len(child_results)
         
         # Aggregate rule-level data
         aggregated_rules = {}
@@ -786,19 +777,15 @@ class SpatialEntity(BaseModel):
             for result in child_results:
                 rule_data = result.get('rules', {}).get(rule_id, {})
                 if rule_data:
-                    if is_room_level:
-                        # Count rooms that passed this rule
-                        if rule_data.get('passed', False):
-                            rooms_passed_rule += 1
-                    elif is_aggregated:
-                        # Sum rooms that passed from aggregated results
-                        rooms_passed_rule += rule_data.get('rooms_passed', 0)
+                    # Count rooms that passed this rule
+                    if rule_data.get('passed', False):
+                        rooms_passed_rule += 1
                     
-                    # Sum non-compliant hours (handle both field names)
-                    total_non_compliant_hours += rule_data.get('non_compliant_hours', 0.0) or rule_data.get('total_non_compliant_hours', 0.0)
+                    # Sum non-compliant hours
+                    total_non_compliant_hours += rule_data.get('non_compliant_hours', 0.0)
                     
-                    # Sum violation hours (handle both field names)
-                    total_violations_hours += rule_data.get('violations_hours', 0.0) or rule_data.get('total_violations_hours', 0.0)
+                    # Sum violation hours
+                    total_violations_hours += rule_data.get('violations_hours', 0.0)
             
             # Get rule name from first result that has it
             rule_name = None
