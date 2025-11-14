@@ -301,15 +301,56 @@ class Portfolio(SpatialEntity):
                     force_recompute=False,
                 )
         
-        # Now aggregate using existing compute_metrics logic
-        portfolio_metrics = self.compute_metrics(
-            building_lookup=building_lookup,
-            force_recompute=force_recompute,
-        )
+        from .standards_registry import get_registry
         
-        # Extract standards-specific results
-        if 'en16798' in portfolio_metrics:
-            results['en16798'] = portfolio_metrics['en16798']
+        # Get all child buildings
+        child_buildings = []
+        for building_id in self.child_ids:
+            building = building_lookup(building_id)
+            if building is not None:
+                child_buildings.append(building)
+        
+        # Get registry to access standard configs
+        registry = get_registry()
+        
+        # Aggregate results for each standard
+        for standard_id, standard_config in registry.standards.items():
+            aggregation_config = standard_config.config_data.get('aggregation', {})
+            
+            # Check if this standard should aggregate to portfolio level
+            aggregate_to_types = aggregation_config.get('aggregate_to_types', [])
+            if 'portfolio' not in aggregate_to_types:
+                continue
+            
+            # Collect child results for this standard
+            child_results = []
+            child_weights = []
+            
+            for building in child_buildings:
+                if hasattr(building, 'computed_metrics'):
+                    building_standard_results = building.computed_metrics.get('building_standards', {})
+                    
+                    if standard_id in building_standard_results:
+                        result = building_standard_results[standard_id]
+                        child_results.append(result)
+                        
+                        # Get weight for weighted aggregation
+                        weight = building.area_m2 if hasattr(building, 'area_m2') else 1.0
+                        child_weights.append(weight)
+            
+            if not child_results:
+                continue
+            
+            # Apply aggregation based on config
+            aggregated_result = self._aggregate_standard_results(
+                standard_id=standard_id,
+                child_results=child_results,
+                child_weights=child_weights,
+                aggregation_config=aggregation_config,
+            )
+            
+            if aggregated_result:
+                results[standard_id] = aggregated_result
         
         # Cache results
         self.computed_metrics['portfolio_standards'] = results
@@ -838,6 +879,8 @@ class Building(SpatialEntity):
         if not force_recompute and 'building_standards' in self.computed_metrics:
             return self.computed_metrics['building_standards']
         
+        from .standards_registry import get_registry
+        
         results = {}
         
         # Use building's properties as defaults
@@ -880,17 +923,71 @@ class Building(SpatialEntity):
                         force_recompute=False,
                     )
         
-        # Now aggregate using existing compute_metrics logic
-        building_metrics = self.compute_metrics(
-            floor_lookup=floor_lookup,
-            room_lookup=room_lookup,
-            metrics=['en16798'],
-            force_recompute=force_recompute,
-        )
+        # Get all child entities (floors and direct rooms)
+        child_entities = []
+        if floor_lookup and self.floor_ids:
+            for floor_id in self.floor_ids:
+                floor = floor_lookup(floor_id)
+                if floor is not None:
+                    child_entities.append(floor)
         
-        # Extract standards-specific results
-        if 'en16798' in building_metrics:
-            results['en16798'] = building_metrics['en16798']
+        if room_lookup and self.room_ids:
+            for room_id in self.room_ids:
+                room = room_lookup(room_id)
+                if room is not None:
+                    child_entities.append(room)
+        
+        # Get registry to access standard configs
+        registry = get_registry()
+        
+        # Aggregate results for each standard
+        for standard_id, standard_config in registry.standards.items():
+            aggregation_config = standard_config.config_data.get('aggregation', {})
+            
+            # Check if this standard should aggregate to building level
+            aggregate_to_types = aggregation_config.get('aggregate_to_types', [])
+            if 'building' not in aggregate_to_types:
+                continue
+            
+            # Collect child results for this standard
+            child_results = []
+            child_weights = []
+            
+            # Convert standard_id to match storage key (hyphen to underscore)
+            storage_key = standard_id.replace('-', '_')
+            
+            for child in child_entities:
+                # Get the appropriate results dict based on entity type
+                if hasattr(child, 'computed_metrics'):
+                    # Check if this is a Room by looking at the type name
+                    is_room = child.__class__.__name__ == 'Room'
+                    
+                    if is_room:
+                        child_standard_results = child.computed_metrics.get('standards_results', {})
+                    else:  # Floor or other
+                        child_standard_results = child.computed_metrics.get('floor_standards', {})
+                    
+                    if storage_key in child_standard_results:
+                        result = child_standard_results[storage_key]
+                        child_results.append(result)
+                        
+                        # Get weight for weighted aggregation
+                        weight = child.area_m2 if hasattr(child, 'area_m2') else 1.0
+                        child_weights.append(weight)
+            
+            if not child_results:
+                continue
+            
+            # Apply aggregation based on config
+            aggregated_result = self._aggregate_standard_results(
+                standard_id=standard_id,
+                child_results=child_results,
+                child_weights=child_weights,
+                aggregation_config=aggregation_config,
+            )
+            
+            if aggregated_result:
+                results[standard_id] = aggregated_result
         
         # Cache results
         self.computed_metrics['building_standards'] = results
@@ -1189,12 +1286,66 @@ class Floor(SpatialEntity):
                     force_recompute=False,
                 )
         
-        # Now aggregate using existing compute_metrics logic
-        floor_metrics = self.compute_metrics(room_lookup=room_lookup, force_recompute=force_recompute)
+        from .standards_registry import get_registry
         
-        # Extract standards-specific results
-        if 'en16798' in floor_metrics:
-            results['en16798'] = floor_metrics['en16798']
+        # Get all child rooms
+        child_rooms = []
+        for room_id in self.child_ids:
+            room = room_lookup(room_id)
+            if room is not None:
+                child_rooms.append(room)
+        
+        # Get registry to access standard configs
+        registry = get_registry()
+        
+        print(f"DEBUG Floor.compute_standards() for floor {self.id}")
+        print(f"  child_ids: {self.child_ids}")
+        print(f"  child_rooms collected: {len(child_rooms)}")
+        print(f"  standards in registry: {list(registry.standards.keys())}")
+        
+        # Aggregate results for each standard
+        for standard_id, standard_config in registry.standards.items():
+            aggregation_config = standard_config.config_data.get('aggregation', {})
+            
+            # Check if this standard should aggregate to floor level
+            aggregate_to_types = aggregation_config.get('aggregate_to_types', [])
+            print(f"  Standard {standard_id}: aggregate_to_types={aggregate_to_types}")
+            
+            if 'floor' not in aggregate_to_types:
+                continue
+            
+            # Collect child results for this standard
+            child_results = []
+            child_weights = []
+            
+            for room in child_rooms:
+                if hasattr(room, 'computed_metrics'):
+                    room_standard_results = room.computed_metrics.get('standards_results', {})
+                    
+                    if standard_id in room_standard_results:
+                        result = room_standard_results[standard_id]
+                        child_results.append(result)
+                        
+                        # Get weight for weighted aggregation
+                        weight = room.area_m2 if hasattr(room, 'area_m2') else 1.0
+                        child_weights.append(weight)
+            
+            if not child_results:
+                print(f"    No child results for {standard_id}")
+                continue
+            
+            print(f"    Aggregating {len(child_results)} results for {standard_id}")
+            
+            # Apply aggregation based on config
+            aggregated_result = self._aggregate_standard_results(
+                standard_id=standard_id,
+                child_results=child_results,
+                child_weights=child_weights,
+                aggregation_config=aggregation_config,
+            )
+            
+            if aggregated_result:
+                results[standard_id] = aggregated_result
         
         # Cache results
         self.computed_metrics['floor_standards'] = results
@@ -1325,7 +1476,7 @@ class Room(SpatialEntity):
         outdoor_temperature: Optional[List[float]] = None
     ) -> Dict[str, Any]:
         """
-        Perform self-analysis of room data including EN16798-1 compliance.
+        Perform self-analysis of room data including en16798_1 compliance.
 
         Args:
             analyses: List of analyses to run (['en16798', 'tail', 'basic'])
@@ -1362,7 +1513,7 @@ class Room(SpatialEntity):
                     results[f'{metric_name}_min'] = min(values)
                     results[f'{metric_name}_max'] = max(values)
 
-        # Run EN16798-1 compliance analysis
+        # Run en16798_1 compliance analysis
         if 'en16798' in analyses and self._has_en16798_data():
             try:
                 en16798_results = self._compute_en16798_compliance(season, outdoor_temperature)
@@ -1397,7 +1548,7 @@ class Room(SpatialEntity):
         outdoor_temperature: Optional[List[float]] = None
     ) -> Dict[str, Any]:
         """
-        Compute EN16798-1 compliance for this room.
+        Compute en16798_1 compliance for this room.
 
         Args:
             season: "heating" or "cooling"

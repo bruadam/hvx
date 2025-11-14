@@ -735,6 +735,226 @@ class SpatialEntity(BaseModel):
         
         return aggregated
 
+    def _aggregate_br18_results(
+        self,
+        child_results: List[Dict[str, Any]],
+        aggregation_config: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        """
+        Aggregate BR18 results by summing non-compliant hours and counting passing rooms.
+        
+        Args:
+            child_results: List of BR18 result dictionaries from child entities
+            aggregation_config: Aggregation configuration
+        
+        Returns:
+            Aggregated BR18 result with summed hours and room counts
+        """
+        # Check if we're aggregating room-level or already-aggregated results
+        first_result = child_results[0] if child_results else {}
+        is_room_level = 'overall_pass' in first_result  # Room results have overall_pass
+        is_aggregated = 'rooms_total' in first_result  # Aggregated results have rooms_total
+        
+        if is_room_level:
+            # Aggregating from rooms
+            rooms_passed = sum(1 for r in child_results if r.get('overall_pass', False))
+            total_rooms = len(child_results)
+        elif is_aggregated:
+            # Aggregating from already-aggregated results (e.g., buildings -> portfolio)
+            rooms_passed = sum(r.get('rooms_passed_overall', 0) for r in child_results)
+            total_rooms = sum(r.get('rooms_total', 0) for r in child_results)
+        else:
+            # Unknown format
+            rooms_passed = 0
+            total_rooms = len(child_results)
+        
+        # Aggregate rule-level data
+        aggregated_rules = {}
+        
+        # Get all unique rule IDs from child results
+        all_rule_ids = set()
+        for result in child_results:
+            rules = result.get('rules', {})
+            all_rule_ids.update(rules.keys())
+        
+        # Aggregate each rule
+        for rule_id in all_rule_ids:
+            rooms_passed_rule = 0
+            total_non_compliant_hours = 0.0
+            total_violations_hours = 0.0
+            
+            for result in child_results:
+                rule_data = result.get('rules', {}).get(rule_id, {})
+                if rule_data:
+                    if is_room_level:
+                        # Count rooms that passed this rule
+                        if rule_data.get('passed', False):
+                            rooms_passed_rule += 1
+                    elif is_aggregated:
+                        # Sum rooms that passed from aggregated results
+                        rooms_passed_rule += rule_data.get('rooms_passed', 0)
+                    
+                    # Sum non-compliant hours (handle both field names)
+                    total_non_compliant_hours += rule_data.get('non_compliant_hours', 0.0) or rule_data.get('total_non_compliant_hours', 0.0)
+                    
+                    # Sum violation hours (handle both field names)
+                    total_violations_hours += rule_data.get('violations_hours', 0.0) or rule_data.get('total_violations_hours', 0.0)
+            
+            # Get rule name from first result that has it
+            rule_name = None
+            rule_metric = None
+            for result in child_results:
+                rule_data = result.get('rules', {}).get(rule_id, {})
+                if rule_data:
+                    rule_name = rule_data.get('name')
+                    rule_metric = rule_data.get('metric')
+                    if rule_name:
+                        break
+            
+            aggregated_rules[rule_id] = {
+                'name': rule_name,
+                'metric': rule_metric,
+                'total_non_compliant_hours': total_non_compliant_hours,
+                'total_violations_hours': total_violations_hours,
+                'rooms_passed': rooms_passed_rule,
+                'rooms_total': total_rooms,
+                'pass_rate': (rooms_passed_rule / total_rooms * 100) if total_rooms > 0 else 0,
+            }
+        
+        # Build aggregated result
+        aggregated_result = {
+            'standard': 'BR18 Danish Building Regulations',
+            'aggregation_method': 'sum',
+            'rooms_passed_overall': rooms_passed,
+            'rooms_total': total_rooms,
+            'overall_pass_rate': (rooms_passed / total_rooms * 100) if total_rooms > 0 else 0,
+            'rules': aggregated_rules,
+        }
+        
+        return aggregated_result
+
+    def _aggregate_standard_results(
+        self,
+        standard_id: str,
+        child_results: List[Dict[str, Any]],
+        child_weights: List[float],
+        aggregation_config: Dict[str, Any],
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Aggregate standard results from child entities using the aggregation config.
+        
+        Args:
+            standard_id: ID of the standard being aggregated
+            child_results: List of result dictionaries from child entities
+            child_weights: List of weights (e.g., area_m2) for weighted aggregation
+            aggregation_config: Aggregation configuration from the standard's YAML
+        
+        Returns:
+            Aggregated result dictionary or None if aggregation fails
+        """
+        if not child_results:
+            return None
+        
+        spatial_method = aggregation_config.get('spatial_method', 'worst')
+        metric = aggregation_config.get('metric', 'category')
+        
+        # BR18 uses sum/count aggregation
+        if standard_id == 'br18':
+            return self._aggregate_br18_results(child_results, aggregation_config)
+        
+        # Extract the target metric values from child results
+        values = []
+        for result in child_results:
+            if standard_id == 'en16798_1':
+                # EN16798 uses categories (I, II, III, IV)
+                value = result.get('achieved_category')
+                if value:
+                    # Convert category to numeric for aggregation (I=1, II=2, III=3, IV=4)
+                    category_map = {'I': 1, 'II': 2, 'III': 3, 'IV': 4}
+                    numeric_value = category_map.get(value)
+                    if numeric_value is not None:
+                        values.append(numeric_value)
+            elif standard_id == 'tail':
+                # TAIL uses ratings (I, II, III, IV, V)
+                value = result.get('overall_rating_label')
+                if value:
+                    # Convert rating to numeric (I=1, II=2, III=3, IV=4, V=5)
+                    rating_map = {'I': 1, 'II': 2, 'III': 3, 'IV': 4, 'V': 5}
+                    numeric_value = rating_map.get(value)
+                    if numeric_value is not None:
+                        values.append(numeric_value)
+            else:
+                # Generic numeric metric
+                value = result.get(metric)
+                if value is not None and isinstance(value, (int, float)):
+                    values.append(value)
+        
+        if not values:
+            return None
+        
+        # Apply spatial aggregation method
+        if spatial_method == 'worst':
+            # Worst means highest category/rating number (lower quality)
+            aggregated_numeric = max(values)
+        elif spatial_method == 'best':
+            # Best means lowest category/rating number (higher quality)
+            aggregated_numeric = min(values)
+        elif spatial_method == 'average':
+            # Simple average
+            aggregated_numeric = sum(values) / len(values)
+        elif spatial_method in ['weighted_average', 'occupant_weighted']:
+            # Weighted average using child weights
+            if len(child_weights) != len(values):
+                # Fallback to simple average if weights don't match
+                aggregated_numeric = sum(values) / len(values)
+            else:
+                total_weight = sum(child_weights)
+                if total_weight > 0:
+                    aggregated_numeric = sum(v * w for v, w in zip(values, child_weights)) / total_weight
+                else:
+                    aggregated_numeric = sum(values) / len(values)
+        else:
+            # Default to worst-case
+            aggregated_numeric = max(values)
+        
+        # Round to nearest integer for category/rating based standards
+        aggregated_numeric = round(aggregated_numeric)
+        
+        # Build aggregated result
+        aggregated_result = {}
+        
+        if standard_id == 'en16798_1':
+            # Convert numeric back to category
+            numeric_to_category = {1: 'I', 2: 'II', 3: 'III', 4: 'IV'}
+            aggregated_category = numeric_to_category.get(aggregated_numeric, 'IV')
+            
+            aggregated_result = {
+                'achieved_category': aggregated_category,
+                'aggregation_method': spatial_method,
+                'child_count': len(values),
+                'standard': 'en16798_1',
+            }
+        elif standard_id == 'tail':
+            # Convert numeric back to rating
+            numeric_to_rating = {1: 'I', 2: 'II', 3: 'III', 4: 'IV', 5: 'V'}
+            aggregated_rating = numeric_to_rating.get(aggregated_numeric, 'V')
+            
+            aggregated_result = {
+                'overall_rating_label': aggregated_rating,
+                'aggregation_method': spatial_method,
+                'child_count': len(values),
+                'standard': 'TAIL',
+            }
+        else:
+            # Generic result
+            aggregated_result = {
+                metric: aggregated_numeric,
+                'aggregation_method': spatial_method,
+                'child_count': len(values),
+            }
+        
+        return aggregated_result
+
 
 __all__ = [
     "SpatialEntity"

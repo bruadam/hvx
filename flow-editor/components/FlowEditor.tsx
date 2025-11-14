@@ -25,7 +25,14 @@ import ZipFlowGenerator from './ZipFlowGenerator';
 import SampleDataGenerator from './SampleDataGenerator';
 import HelpModal from './HelpModal';
 import NodePropertiesModal from './NodePropertiesModal';
+import StatisticsPanel from './StatisticsPanel';
 import { BaseNodeType, NodeData, SpatialEntityType, SensorType, MetricMapping, getNodeConfig } from '@/lib/nodeTypes';
+import {
+  computeSensorStatistics,
+  computeStandardsCompliance,
+  computeSimulations,
+  computeAllStatistics,
+} from '@/lib/statisticsUtils';
 
 const nodeTypes: NodeTypes = {
   custom: CustomNode,
@@ -47,6 +54,8 @@ export default function FlowEditor() {
   const [isPropertiesModalOpen, setIsPropertiesModalOpen] = useState(false);
   const [showSensors, setShowSensors] = useState(true);
   const [pendingCSVData, setPendingCSVData] = useState<{data: any[], fileName: string} | null>(null);
+  const [showStatistics, setShowStatistics] = useState(false);
+  const [statisticsNode, setStatisticsNode] = useState<Node<NodeData> | null>(null);
 
   const onConnect = useCallback(
     (params: Connection) => {
@@ -306,7 +315,136 @@ export default function FlowEditor() {
     setEdges(newEdges);
   };
 
+  const handleShowStatistics = (node: Node<NodeData>) => {
+    setStatisticsNode(node);
+    setShowStatistics(true);
+  };
+
+  const handleComputeSensorStats = async () => {
+    if (!statisticsNode) return;
+
+    const stats = computeSensorStatistics(statisticsNode, nodes, edges);
+
+    setNodes((nds) =>
+      nds.map((node) => {
+        if (node.id === statisticsNode.id) {
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              statistics: {
+                ...node.data.statistics,
+                sensorStats: stats,
+                lastComputedAt: new Date().toISOString(),
+              },
+            },
+          };
+        }
+        return node;
+      })
+    );
+
+    // Update statistics node state
+    setStatisticsNode((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        data: {
+          ...prev.data,
+          statistics: {
+            ...prev.data.statistics,
+            sensorStats: stats,
+            lastComputedAt: new Date().toISOString(),
+          },
+        },
+      };
+    });
+  };
+
+  const handleComputeStandards = async () => {
+    if (!statisticsNode) return;
+
+    const standards = await computeStandardsCompliance(statisticsNode, nodes, edges);
+
+    setNodes((nds) =>
+      nds.map((node) => {
+        if (node.id === statisticsNode.id) {
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              statistics: {
+                ...node.data.statistics,
+                standardsResults: standards,
+                lastComputedAt: new Date().toISOString(),
+              },
+            },
+          };
+        }
+        return node;
+      })
+    );
+
+    // Update statistics node state
+    setStatisticsNode((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        data: {
+          ...prev.data,
+          statistics: {
+            ...prev.data.statistics,
+            standardsResults: standards,
+            lastComputedAt: new Date().toISOString(),
+          },
+        },
+      };
+    });
+  };
+
+  const handleComputeSimulations = async () => {
+    if (!statisticsNode) return;
+
+    const simulations = await computeSimulations(statisticsNode, nodes, edges);
+
+    setNodes((nds) =>
+      nds.map((node) => {
+        if (node.id === statisticsNode.id) {
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              statistics: {
+                ...node.data.statistics,
+                simulationResults: simulations,
+                lastComputedAt: new Date().toISOString(),
+              },
+            },
+          };
+        }
+        return node;
+      })
+    );
+
+    // Update statistics node state
+    setStatisticsNode((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        data: {
+          ...prev.data,
+          statistics: {
+            ...prev.data.statistics,
+            simulationResults: simulations,
+            lastComputedAt: new Date().toISOString(),
+          },
+        },
+      };
+    });
+  };
+
   const isSensorNode = selectedNode?.data.baseType === 'sensor';
+  const isSpatialEntityNode = selectedNode?.data.baseType === 'spatialEntity';
 
   // Filter nodes based on sensor visibility
   const visibleNodes = showSensors
@@ -440,6 +578,16 @@ export default function FlowEditor() {
                 Edit Properties
               </button>
 
+              {isSpatialEntityNode && (
+                <button
+                  onClick={() => handleShowStatistics(selectedNode)}
+                  className="mt-2 w-full flex items-center justify-center gap-2 px-3 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors"
+                >
+                  <Icons.BarChart3 size={16} />
+                  View Statistics
+                </button>
+              )}
+
               {isSensorNode && (
                 <>
                   <button
@@ -501,6 +649,36 @@ export default function FlowEditor() {
         onClose={() => setIsZipGeneratorOpen(false)}
         onGenerate={handleZipFlowGenerate}
       />
+
+      {showStatistics && statisticsNode && (
+        <div className="fixed inset-0 z-50 flex">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-black bg-opacity-30"
+            onClick={() => setShowStatistics(false)}
+          />
+          {/* Statistics Panel */}
+          <div className="relative ml-auto h-full">
+            <StatisticsPanel
+              nodeId={statisticsNode.id}
+              nodeLabel={statisticsNode.data.label}
+              nodeType={statisticsNode.data.subType as 'portfolio' | 'building' | 'floor' | 'room'}
+              statistics={statisticsNode.data.statistics}
+              onComputeSensorStats={handleComputeSensorStats}
+              onComputeStandards={handleComputeStandards}
+              onComputeSimulations={handleComputeSimulations}
+            />
+            {/* Close button */}
+            <button
+              onClick={() => setShowStatistics(false)}
+              className="absolute top-4 left-4 z-10 p-2 bg-white rounded-full shadow-lg hover:bg-gray-100 transition-colors"
+              title="Close statistics"
+            >
+              <Icons.X size={20} />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

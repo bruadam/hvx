@@ -261,6 +261,14 @@ class PortfolioLoader:
         all_points = {}
         all_ts = {}
         
+        # Create portfolio entity
+        portfolio_name = data_path.name.replace("_", " ").title()
+        self.portfolio = Portfolio(
+            id=f"{data_path.name}_portfolio",
+            name=portfolio_name,
+            type=SpatialEntityType.PORTFOLIO,
+        )
+        
         # Find all building directories
         building_dirs = sorted(data_path.glob("building_*"))
         

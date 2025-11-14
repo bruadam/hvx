@@ -309,19 +309,21 @@ class AnalysisRegistry:
         
         for standard in self.standards.values():
             # Check applicability criteria
-            if not standard.is_applicable(
+            is_appl = standard.is_applicable(
                 country=country,
                 region=region,
                 building_type=building_type,
                 room_type=room_type,
                 ventilation_type=ventilation_type,
                 season=season,
-            ):
+            )
+            if not is_appl:
                 continue
             
             # Check required data
             if available_metrics is not None:
-                if not standard.has_required_data(available_metrics):
+                has_data = standard.has_required_data(available_metrics)
+                if not has_data:
                     continue
             
             applicable.append(standard)

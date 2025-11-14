@@ -24,7 +24,7 @@ class StandardDefinition(BaseModel):
     Metadata describing a regulation or internal standard.
     """
 
-    id: str  # e.g. "en16798-1"
+    id: str  # e.g. "en16798_1"
     name: str
     version: str
     jurisdiction: str  # e.g. "EU", "DK"

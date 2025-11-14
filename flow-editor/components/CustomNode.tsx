@@ -84,6 +84,32 @@ const CustomNode = memo(({ data, selected }: NodeProps<NodeData>) => {
         </div>
       )}
 
+      {/* Statistics indicator for spatial entities */}
+      {data.baseType === 'spatialEntity' && data.statistics && (
+        <div className="mt-2 pt-2 border-t border-gray-300">
+          <div className="flex items-center gap-2 text-xs">
+            {data.statistics.sensorStats && (
+              <div className="flex items-center gap-1 text-green-600" title="Sensor stats computed">
+                <Icons.Activity size={12} />
+                <span>{data.statistics.sensorStats.sensorCount}</span>
+              </div>
+            )}
+            {data.statistics.standardsResults && data.statistics.standardsResults.length > 0 && (
+              <div className="flex items-center gap-1 text-blue-600" title="Standards computed">
+                <Icons.CheckCircle size={12} />
+                <span>{data.statistics.standardsResults.length}</span>
+              </div>
+            )}
+            {data.statistics.simulationResults && data.statistics.simulationResults.length > 0 && (
+              <div className="flex items-center gap-1 text-purple-600" title="Simulations computed">
+                <Icons.TrendingUp size={12} />
+                <span>{data.statistics.simulationResults.length}</span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       <Handle
         type="source"
         position={Position.Bottom}

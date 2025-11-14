@@ -1,4 +1,4 @@
-id: "en16798-1"
+id: "en16798_1"
 name: "EN 16798-1 Indoor Environmental Input Parameters for Design and Assessment of Energy Performance of Buildings"
 version: "2024.1"
 standard_type: "EN16798"
@@ -24,7 +24,8 @@ categories:
 applicability:
   countries: ["DK", "DE", "FR", "NL", "SE", "NO", "BE", "AT", "IT", "ES", "PT", "FI", "IE", "LU", "GR", "CZ", "PL", "HU", "RO", "BG", "HR", "SI", "SK", "EE", "LV", "LT", "CY", "MT"]
   building_types: ["office", "school", "classroom", "meeting_room", "residential"]
-  ventilation_types: ["natural", "mechanical", "mixed"]
+  # Don't filter by ventilation_types - allow all types including unknown
+  # ventilation_types: ["natural", "mechanical", "mixed"]
   seasons: ["all_year", "winter", "summer"]
 
 # Required environmental parameters

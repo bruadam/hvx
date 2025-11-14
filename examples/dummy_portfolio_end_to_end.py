@@ -320,10 +320,12 @@ def print_portfolio_summary(
         if isinstance(metrics, dict):
             en16798_summary = metrics.get('en16798_1', {})
             tail_summary = metrics.get('tail', {})
+            br18_summary = metrics.get('br18', {})
             
             print(f"{building_id}:")
             print(f"  EN16798 achieved category: {en16798_summary.get('achieved_category', 'n/a')}")
             print(f"  TAIL overall rating: {tail_summary.get('overall_rating_label', 'n/a')}")
+            print(f"  BR18 compliance rate: {br18_summary.get('overall_pass_rate', 'n/a')}, rooms passed: {br18_summary.get('rooms_passed_overall', 'n/a')}/{br18_summary.get('rooms_total', 'n/a')}")
         break
 
     print("\n=== Portfolio-Level Aggregation ===")
@@ -340,10 +342,12 @@ def print_portfolio_summary(
     if isinstance(portfolio_metrics, dict):
         en16798_summary = portfolio_metrics.get('en16798_1', {})
         tail_summary = portfolio_metrics.get('tail', {})
+        br18_summary = portfolio_metrics.get('br18', {})
         
         print(f"\nPortfolio standards:")
         print(f"  EN16798 achieved category: {en16798_summary.get('achieved_category', 'n/a')}")
         print(f"  TAIL overall rating: {tail_summary.get('overall_rating_label', 'n/a')}")
+        print(f"  BR18 compliance rate: {br18_summary.get('overall_pass_rate', 'n/a')}, rooms passed: {br18_summary.get('rooms_passed_overall', 'n/a')}/{br18_summary.get('rooms_total', 'n/a')}")
 
 
 if __name__ == "__main__":

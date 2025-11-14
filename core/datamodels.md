@@ -98,7 +98,7 @@ Represent standards in two layers:
 1. **Standard definition** (metadata about the regulation):
    ```python
    class StandardDefinition(BaseModel):
-       id: str  # e.g. "en16798-1"
+       id: str  # e.g. "en16798_1"
        name: str
        version: str
        jurisdiction: str  # "EU", "DK", etc.

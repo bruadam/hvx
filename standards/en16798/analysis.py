@@ -859,7 +859,7 @@ class EN16798Calculator:
         return metrics
 
 def load_config() -> Dict[str, Any]:
-    """Load the EN16798-1 configuration file."""
+    """Load the en16798_1 configuration file."""
     config_path = Path(__file__).parent / "config.yaml"
     with open(config_path, 'r') as f:
         config = yaml.safe_load(f) or {}
@@ -1098,11 +1098,11 @@ def run(
         started_at=datetime.now(timezone.utc),
         ended_at=datetime.now(timezone.utc),
         summary_results={
-            'best_category': best_category,
+            'achieved_category': best_category,  # Changed from best_category to achieved_category
             'best_compliance_rate': best_compliance,
             'tested_categories': [tr.details.get('category') for tr in test_results],
             'season': season,
-            'standard': 'EN16798-1',
+            'standard': 'en16798_1',
             'version': config.get('version', '2024.1'),
         }
     )
