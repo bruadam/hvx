@@ -15,6 +15,7 @@ from .enums import (
     PointType,
     TimeSeriesType,
     SensorSourceType,
+    EnergyCarrier,
 )
 
 
@@ -208,6 +209,89 @@ class TimeSeries(BaseModel):
     source: Optional[str] = None  # e.g. "sensor", "bms", "simulation", "analytics"
     metadata: Dict[str, Any] = Field(default_factory=dict)
 
+    # Aggregation configuration
+    target_resolution_seconds: Optional[int] = Field(
+        default=None,
+        description="Target resolution for automatic aggregation (in seconds)"
+    )
+    aggregation_method: Optional[str] = Field(
+        default=None,
+        description="Method for aggregating to target resolution"
+    )
+
+
+class EnergyMeter(BaseModel):
+    """
+    Energy meter for tracking consumption by carrier.
+
+    Supports multiple resolutions (hourly, daily, monthly, yearly).
+    """
+    id: str
+    spatial_entity_id: str
+    carrier: EnergyCarrier
+
+    name: Optional[str] = None
+    description: Optional[str] = None
+
+    # Meter readings
+    current_reading_kwh: Optional[float] = Field(default=None, ge=0)
+    last_reading_timestamp: Optional[datetime] = None
+
+    # Time series references (by resolution)
+    hourly_timeseries_id: Optional[str] = None
+    daily_timeseries_id: Optional[str] = None
+    monthly_timeseries_id: Optional[str] = None
+    yearly_timeseries_id: Optional[str] = None
+
+    # Meter metadata
+    meter_number: Optional[str] = None
+    utility_provider: Optional[str] = None
+    tariff_name: Optional[str] = None
+
+    # Physical unit conversion
+    physical_unit: Optional[str] = None  # e.g., "m3", "liter", "kg"
+    conversion_factor_to_kwh: Optional[float] = None
+
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+
+
+class EnergyMeterReading(BaseModel):
+    """
+    Individual energy meter reading with timestamp.
+    """
+    meter_id: str
+    timestamp: datetime
+    value_kwh: float
+    reading_type: str = Field(
+        default="cumulative",
+        description="Type of reading: cumulative, interval, instantaneous"
+    )
+
+    quality: Optional[float] = Field(default=None, ge=0, le=1)
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+
+
+class AggregatedEnergyData(BaseModel):
+    """
+    Aggregated energy consumption data for a specific period.
+    """
+    spatial_entity_id: str
+    carrier: EnergyCarrier
+    period_start: datetime
+    period_end: datetime
+    resolution: str  # "hourly", "daily", "monthly", "yearly"
+
+    total_kwh: float = Field(ge=0)
+    average_kwh: Optional[float] = None
+    peak_kwh: Optional[float] = None
+
+    # Breakdown by time
+    hourly_data: Optional[List[float]] = None
+    daily_data: Optional[List[float]] = None
+    monthly_data: Optional[List[float]] = None
+
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+
 
 __all__ = [
     "SensorSource",
@@ -217,4 +301,7 @@ __all__ = [
     "SensorSeries",
     "TimeSeriesRecord",
     "TimeSeries",
+    "EnergyMeter",
+    "EnergyMeterReading",
+    "AggregatedEnergyData",
 ]

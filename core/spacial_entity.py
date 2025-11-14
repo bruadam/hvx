@@ -54,6 +54,24 @@ class SpatialEntity(BaseModel):
 
     geometry_ref: Optional[str] = None
 
+    # Latest TAIL analysis snapshot
+    tail_rating: Optional[int] = Field(
+        default=None,
+        description="Most recent TAIL rating value (1-4)"
+    )
+    tail_rating_label: Optional[str] = Field(
+        default=None,
+        description="Most recent TAIL rating label (I-IV)"
+    )
+    tail_domains: Dict[str, Any] = Field(
+        default_factory=dict,
+        description="Domain-level TAIL metrics from the latest analysis"
+    )
+    tail_visualization: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="Graph-ready nested JSON payload for the latest TAIL analysis"
+    )
+
     sensor_groups: Dict[str, SensorGroup] = Field(
         default_factory=dict,
         exclude=True,

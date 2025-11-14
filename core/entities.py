@@ -13,6 +13,7 @@ from pydantic import Field
 from .spacial_entity import SpatialEntity
 from .energy import EnergyConversionService, EnergyUse
 from .enums import SpatialEntityType, VentilationType, EnergyCarrier
+from .metering import EnergyMeter, AggregatedEnergyData
 from simulations.models.real_epc import calculate_epc_rating
 
 
@@ -437,6 +438,12 @@ class Building(SpatialEntity):
         description="Rooms assigned directly without floors"
     )
 
+    # Energy meters
+    energy_meters: List[EnergyMeter] = Field(
+        default_factory=list,
+        description="Energy meters attached to this building"
+    )
+
     # Computed metrics cache
     computed_metrics: Dict[str, Any] = Field(
         default_factory=dict,
@@ -552,6 +559,127 @@ class Building(SpatialEntity):
         self.computed_metrics["primary_energy_breakdown"] = breakdown.model_dump()
 
         return total_primary / self.area_m2 if self.area_m2 else None
+
+    def add_energy_meter(self, meter: EnergyMeter) -> None:
+        """Add an energy meter to this building."""
+        # Remove existing meter with same ID if exists
+        self.energy_meters = [m for m in self.energy_meters if m.id != meter.id]
+        self.energy_meters.append(meter)
+
+    def get_meter_by_carrier(self, carrier: EnergyCarrier) -> Optional[EnergyMeter]:
+        """Get energy meter for a specific carrier."""
+        for meter in self.energy_meters:
+            if meter.carrier == carrier:
+                return meter
+        return None
+
+    def calculate_primary_energy_from_meters(
+        self,
+        aggregated_data: List[AggregatedEnergyData],
+        country_code: Optional[str] = None,
+        conversion_service: Optional[EnergyConversionService] = None,
+    ) -> Optional[float]:
+        """
+        Calculate primary energy per m² from energy meter data.
+
+        This enables automatic calculation from sensor/meter readings instead of
+        manually entered annual consumption values.
+
+        Args:
+            aggregated_data: List of aggregated energy consumption data by carrier
+            country_code: Country code for primary energy factors
+            conversion_service: Energy conversion service (uses default if None)
+
+        Returns:
+            Primary energy consumption per m² per year (kWh/m²/year) or None
+        """
+        if not self.area_m2 or self.area_m2 <= 0:
+            return None
+
+        if not aggregated_data:
+            return None
+
+        # Create EnergyUse objects from aggregated data
+        uses: List[EnergyUse] = []
+        for agg in aggregated_data:
+            if agg.total_kwh > 0:
+                uses.append(
+                    EnergyUse(
+                        carrier=agg.carrier,
+                        delivered_kwh=agg.total_kwh,
+                        metadata={
+                            "period_start": agg.period_start.isoformat(),
+                            "period_end": agg.period_end.isoformat(),
+                            "resolution": agg.resolution,
+                        },
+                    )
+                )
+
+        if not uses:
+            return None
+
+        service = conversion_service or EnergyConversionService()
+        country = (country_code or self._resolve_country_code())
+
+        breakdown = service.calculate_primary_breakdown(country, uses)
+        total_primary = breakdown.total_primary_kwh
+
+        # Account for renewable generation offset
+        renewable_offset = self.annual_renewable_kwh or 0.0
+        if not renewable_offset and self.annual_solar_pv_kwh:
+            renewable_offset = self.annual_solar_pv_kwh
+        if renewable_offset:
+            total_primary = max(0.0, total_primary - renewable_offset)
+
+        # Persist breakdown for downstream consumers
+        self.computed_metrics["primary_energy_breakdown"] = breakdown.model_dump()
+        self.computed_metrics["primary_energy_from_meters"] = True
+
+        return total_primary / self.area_m2 if self.area_m2 else None
+
+    def calculate_and_update_epc_from_meters(
+        self,
+        aggregated_data: List[AggregatedEnergyData],
+        country_code: Optional[str] = None,
+        conversion_service: Optional[EnergyConversionService] = None,
+    ) -> Optional[str]:
+        """
+        Calculate and update EPC rating automatically from energy meter data.
+
+        This is the automatic workflow: meter readings → primary energy → EPC rating.
+
+        Args:
+            aggregated_data: List of aggregated energy consumption data by carrier
+            country_code: Country code for primary energy factors and EPC thresholds
+            conversion_service: Energy conversion service (uses default if None)
+
+        Returns:
+            EPC rating (e.g., 'A', 'B', 'C') or None if cannot be calculated
+        """
+        # Calculate primary energy from meters
+        primary_energy_kwh_m2 = self.calculate_primary_energy_from_meters(
+            aggregated_data,
+            country_code=country_code,
+            conversion_service=conversion_service,
+        )
+
+        if primary_energy_kwh_m2 is None:
+            return None
+
+        # Calculate EPC rating
+        country = country_code or self._resolve_country_code()
+        epc_result = calculate_epc_rating(
+            primary_energy_kwh_m2,
+            country_code=country,
+        )
+
+        rating = epc_result.get("rating")
+        if rating is not None:
+            self.epc_rating = str(rating)
+            self.computed_metrics["epc_rating_auto_calculated"] = True
+            self.computed_metrics["epc_primary_energy_kwh_m2"] = primary_energy_kwh_m2
+
+        return self.epc_rating
 
     def get_energy_summary(self) -> Dict[str, Any]:
         """Get summary of building energy consumption and performance."""
@@ -1684,6 +1812,10 @@ class Room(SpatialEntity):
         
         if not force_recompute and 'standards_results' in self.computed_metrics:
             return self.computed_metrics['standards_results']
+
+        # Persist inferred building type for downstream standards (TAIL uses it for schedules)
+        if building_type and not self.building_type:
+            self.building_type = building_type
         
         results = {}
         
@@ -1740,10 +1872,23 @@ class Room(SpatialEntity):
                 
                 # Store results
                 standard_key = standard_config.id.replace('-', '_')
-                results[standard_key] = analysis_result.summary_results
+                summary = analysis_result.summary_results
+                results[standard_key] = summary
+                
+                if standard_key == 'tail':
+                    overall_rating = summary.get('overall_rating')
+                    self.computed_metrics['tail_overall_rating'] = overall_rating
+                    self.computed_metrics['tail_overall_rating_label'] = summary.get('overall_rating_label')
+                    self.computed_metrics['tail_domains'] = summary.get('domains', {})
+                    if 'visualization' in summary:
+                        self.computed_metrics['tail_visualization'] = summary['visualization']
+                    self.tail_rating = overall_rating
+                    self.tail_rating_label = summary.get('overall_rating_label')
+                    self.tail_domains = summary.get('domains', {})
+                    self.tail_visualization = summary.get('visualization')
                 
                 # Also store in metadata for backward compatibility
-                self.metadata[f'{standard_key}_analysis'] = analysis_result.summary_results
+                self.metadata[f'{standard_key}_analysis'] = summary
                 
             except Exception as e:
                 print(f"Warning: Could not run standard {standard_config.id}: {e}")

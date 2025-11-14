@@ -5,9 +5,6 @@ description: Map delivered primary energy intensity to an EPC rating using EU th
 version: 1
 spatial_scope:
   run_on_types:
-    - floor
-    - building
-  rollup_from_children:
     - building
   aggregate_to_types:
     - portfolio

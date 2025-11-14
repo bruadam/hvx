@@ -124,7 +124,7 @@ export default function FlowEditor() {
 
       // Set default subType based on baseType
       const defaultSubType: SpatialEntityType | SensorType =
-        baseType === 'spatialEntity' ? 'room' : 'temperature';
+        baseType === 'spatialEntity' ? 'room' : 'indoor_climate';
 
       const newNode: Node<NodeData> = {
         id: getId(),

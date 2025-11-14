@@ -5,6 +5,7 @@ import * as Icons from 'lucide-react';
 import Papa from 'papaparse';
 import { Node, Edge } from 'reactflow';
 import { NodeData, SpatialEntityType, SensorType, MetricType, METRIC_TYPE_INFO } from '@/lib/nodeTypes';
+import ZipWizard from './ZipWizard';
 
 interface ZipFlowGeneratorProps {
   isOpen: boolean;
@@ -26,6 +27,8 @@ export default function ZipFlowGenerator({
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState('');
   const [error, setError] = useState('');
+  const [showWizard, setShowWizard] = useState(false);
+  const [parsedStructure, setParsedStructure] = useState<any>(null);
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -79,19 +82,16 @@ export default function ZipFlowGenerator({
         throw new Error('No valid CSV or JSON files found in zip');
       }
 
-      setProgress('Generating flow...');
+      setProgress('Building folder structure...');
 
-      // Generate nodes and edges from files
-      const { nodes, edges } = await generateFlowFromFiles(files);
+      // Build hierarchical structure from folder organization
+      const structure = await buildFolderStructure(files);
 
-      setProgress('Flow generated successfully!');
-
-      setTimeout(() => {
-        onGenerate(nodes, edges);
-        onClose();
-        setIsProcessing(false);
-        setProgress('');
-      }, 500);
+      setProgress('Structure parsed successfully!');
+      setParsedStructure(structure);
+      setIsProcessing(false);
+      setProgress('');
+      setShowWizard(true);
 
     } catch (err: any) {
       console.error('Zip processing error:', err);
@@ -99,6 +99,200 @@ export default function ZipFlowGenerator({
       setIsProcessing(false);
       setProgress('');
     }
+  };
+
+  const buildFolderStructure = async (files: ParsedFile[]): Promise<any> => {
+    // Structure: Portfolio -> Buildings -> Floors -> Rooms -> Sensors
+    const portfolio: any = {
+      name: 'Portfolio',
+      metadata: {},
+      buildings: new Map<string, any>(),
+    };
+
+    // Organize files by folder structure
+    for (const file of files) {
+      const pathParts = file.name.split('/').filter(p => p && !p.startsWith('.') && !p.startsWith('__MACOSX'));
+
+      if (pathParts.length === 0) continue;
+
+      // Handle metadata.json files
+      if (file.type === 'json' && file.name.toLowerCase().includes('metadata')) {
+        const level = pathParts.length;
+        const folderName = pathParts[pathParts.length - 2] || 'portfolio';
+
+        if (level === 1) {
+          // Portfolio level metadata
+          portfolio.metadata = file.content;
+        } else if (level === 2) {
+          // Building level metadata
+          const buildingFolder = pathParts[0];
+          if (!portfolio.buildings.has(buildingFolder)) {
+            portfolio.buildings.set(buildingFolder, {
+              name: formatName(buildingFolder),
+              folder: buildingFolder,
+              metadata: file.content,
+              floors: new Map(),
+              sensors: [],
+            });
+          } else {
+            portfolio.buildings.get(buildingFolder).metadata = file.content;
+          }
+        } else if (level === 3) {
+          // Floor level metadata
+          const buildingFolder = pathParts[0];
+          const floorFolder = pathParts[1];
+
+          if (!portfolio.buildings.has(buildingFolder)) {
+            portfolio.buildings.set(buildingFolder, {
+              name: formatName(buildingFolder),
+              folder: buildingFolder,
+              metadata: {},
+              floors: new Map(),
+              sensors: [],
+            });
+          }
+
+          const building = portfolio.buildings.get(buildingFolder);
+          if (!building.floors.has(floorFolder)) {
+            building.floors.set(floorFolder, {
+              name: formatName(floorFolder),
+              folder: floorFolder,
+              metadata: file.content,
+              rooms: new Map(),
+              sensors: [],
+            });
+          } else {
+            building.floors.get(floorFolder).metadata = file.content;
+          }
+        }
+        continue;
+      }
+
+      // Handle CSV sensor files
+      if (file.type === 'csv') {
+        const sensorInfo = parseSensorFromFilename(file.name);
+        if (!sensorInfo) continue;
+
+        const csvColumns = file.content.length > 0 ? Object.keys(file.content[0]) : [];
+        const metricColumns = csvColumns.filter(col =>
+          !['timestamp', 'time', 'date', 'datetime'].includes(col.toLowerCase())
+        );
+
+        const sensor = {
+          name: formatName(pathParts[pathParts.length - 1].replace('.csv', '')),
+          fileName: file.name,
+          sensorType: sensorInfo.type,
+          csvData: file.content,
+          metricColumns,
+        };
+
+        // Determine where to place the sensor based on folder depth
+        const buildingFolder = pathParts[0];
+
+        if (!portfolio.buildings.has(buildingFolder)) {
+          portfolio.buildings.set(buildingFolder, {
+            name: formatName(buildingFolder),
+            folder: buildingFolder,
+            metadata: {},
+            floors: new Map(),
+            sensors: [],
+          });
+        }
+
+        const building = portfolio.buildings.get(buildingFolder);
+
+        if (pathParts.length === 2) {
+          // Building-level sensor (e.g., building_a/climate_data.csv)
+          building.sensors.push(sensor);
+        } else if (pathParts.length === 3) {
+          // Floor-level sensor or room
+          const floorOrRoomFolder = pathParts[1];
+
+          // Check if this looks like a floor or a room
+          if (floorOrRoomFolder.includes('floor') || floorOrRoomFolder.includes('level')) {
+            // It's a floor-level sensor
+            if (!building.floors.has(floorOrRoomFolder)) {
+              building.floors.set(floorOrRoomFolder, {
+                name: formatName(floorOrRoomFolder),
+                folder: floorOrRoomFolder,
+                metadata: {},
+                rooms: new Map(),
+                sensors: [],
+              });
+            }
+            building.floors.get(floorOrRoomFolder).sensors.push(sensor);
+          } else {
+            // It's a room-level sensor (flat structure: building/room/sensor.csv)
+            if (!building.floors.has('default_floor')) {
+              building.floors.set('default_floor', {
+                name: 'Ground Floor',
+                folder: 'default_floor',
+                metadata: {},
+                rooms: new Map(),
+                sensors: [],
+              });
+            }
+
+            const floor = building.floors.get('default_floor');
+            if (!floor.rooms.has(floorOrRoomFolder)) {
+              floor.rooms.set(floorOrRoomFolder, {
+                name: formatName(floorOrRoomFolder),
+                folder: floorOrRoomFolder,
+                metadata: {},
+                sensors: [],
+              });
+            }
+            floor.rooms.get(floorOrRoomFolder).sensors.push(sensor);
+          }
+        } else if (pathParts.length >= 4) {
+          // Floor -> Room -> Sensor
+          const floorFolder = pathParts[1];
+          const roomFolder = pathParts[2];
+
+          if (!building.floors.has(floorFolder)) {
+            building.floors.set(floorFolder, {
+              name: formatName(floorFolder),
+              folder: floorFolder,
+              metadata: {},
+              rooms: new Map(),
+              sensors: [],
+            });
+          }
+
+          const floor = building.floors.get(floorFolder);
+          if (!floor.rooms.has(roomFolder)) {
+            floor.rooms.set(roomFolder, {
+              name: formatName(roomFolder),
+              folder: roomFolder,
+              metadata: {},
+              sensors: [],
+            });
+          }
+
+          floor.rooms.get(roomFolder).sensors.push(sensor);
+        }
+      }
+    }
+
+    // Convert Maps to Arrays
+    return {
+      name: portfolio.name,
+      metadata: portfolio.metadata,
+      buildings: Array.from(portfolio.buildings.values()).map(building => ({
+        ...building,
+        floors: Array.from(building.floors.values()).map(floor => ({
+          ...floor,
+          rooms: Array.from(floor.rooms.values()),
+        })),
+      })),
+    };
+  };
+
+  const formatName = (folderName: string): string => {
+    return folderName
+      .replace(/_/g, ' ')
+      .replace(/\b\w/g, c => c.toUpperCase())
+      .trim();
   };
 
   const generateFlowFromFiles = async (files: ParsedFile[]): Promise<{ nodes: Node<NodeData>[], edges: Edge[] }> => {
@@ -323,39 +517,94 @@ export default function ZipFlowGenerator({
   const parseSensorFromFilename = (filename: string): { type: SensorType } | null => {
     const lower = filename.toLowerCase();
 
-    if (lower.includes('temperature') || lower.includes('temp')) return { type: 'temperature' };
-    if (lower.includes('humidity') || lower.includes('rh')) return { type: 'humidity' };
-    if (lower.includes('co2')) return { type: 'co2' };
-    if (lower.includes('occupancy')) return { type: 'occupancy' };
-    if (lower.includes('light') || lower.includes('lux')) return { type: 'light' };
-    if (lower.includes('energy') || lower.includes('power')) return { type: 'energy' };
+    // Check for data categories
+    if (lower.includes('climate_data') || lower.includes('outdoor') || lower.includes('weather')) {
+      return { type: 'weather' };
+    }
+    if (lower.includes('energy_data') || lower.includes('energy_meter') || lower.includes('electricity') || lower.includes('gas')) {
+      return { type: 'energy_consumption' };
+    }
+    if (lower.includes('occupancy')) {
+      return { type: 'occupancy' };
+    }
+    if (lower.includes('power') && !lower.includes('energy')) {
+      return { type: 'power' };
+    }
+    if (lower.includes('water')) {
+      return { type: 'water' };
+    }
+
+    // Default to indoor_climate for temperature, humidity, CO2, etc.
+    if (lower.includes('temperature') || lower.includes('temp') || lower.includes('humidity') ||
+        lower.includes('rh') || lower.includes('co2') || lower.includes('light') ||
+        lower.includes('lux') || lower.includes('voc') || lower.includes('pm')) {
+      return { type: 'indoor_climate' };
+    }
 
     return null;
   };
 
   const extractSpaceInfo = (filename: string): { building: string; floor?: string; room?: string } => {
-    // Pattern: sensor_type_room_number.csv or sensor_type_building_floor_room.csv
-    const lower = filename.toLowerCase().replace('.csv', '');
-    const parts = lower.split('_');
+    // Parse folder structure from filename path
+    // Expected patterns:
+    // - building_a/level_1/conference_room_1.csv
+    // - building_a/climate_data.csv
+    // - dummy_data/temperature_sensor_room_101.csv
 
-    // Simple extraction: assume building_a, room_101 patterns
+    const pathParts = filename.split('/').filter(p => p && !p.startsWith('.') && !p.startsWith('__MACOSX'));
+    const fileNameOnly = pathParts[pathParts.length - 1].toLowerCase().replace('.csv', '').replace('.json', '');
+
     let building = 'Building A';
-    let room: string | undefined;
     let floor: string | undefined;
+    let room: string | undefined;
 
-    for (const part of parts) {
-      if (part.startsWith('building')) {
-        building = part.charAt(0).toUpperCase() + part.slice(1).replace(/([a-z])([A-Z])/g, '$1 $2');
+    // Parse from folder structure first
+    for (let i = 0; i < pathParts.length - 1; i++) {
+      const part = pathParts[i].toLowerCase();
+
+      // Building detection
+      if (part.includes('building')) {
+        building = pathParts[i].replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
       }
-      if (part.startsWith('room') || /^\d+$/.test(part)) {
-        room = part.startsWith('room') ? part : `Room ${part}`;
+
+      // Floor/Level detection
+      if (part.includes('floor') || part.includes('level')) {
+        floor = pathParts[i].replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
       }
-      if (part.startsWith('floor')) {
-        floor = part.charAt(0).toUpperCase() + part.slice(1);
+
+      // Room detection from folder
+      if (part.includes('room') && i === pathParts.length - 2) {
+        room = pathParts[i].replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
       }
     }
 
-    return { building, floor, room: room || 'Main Room' };
+    // Parse from filename if not found in folders
+    if (!room && fileNameOnly) {
+      const filenameParts = fileNameOnly.split('_');
+
+      for (let i = 0; i < filenameParts.length; i++) {
+        const part = filenameParts[i];
+
+        // Room number patterns: room_101, 101, conference_room_1
+        if (part === 'room' && i + 1 < filenameParts.length && /^\d+$/.test(filenameParts[i + 1])) {
+          room = `Room ${filenameParts[i + 1]}`;
+          break;
+        } else if (/^\d{2,3}$/.test(part)) {
+          room = `Room ${part}`;
+          break;
+        } else if (part.includes('office') || part.includes('conference') || part.includes('meeting') || part.includes('classroom')) {
+          room = filenameParts.slice(i).join(' ').replace(/\b\w/g, c => c.toUpperCase());
+          break;
+        }
+      }
+    }
+
+    // If still no room found and this is a room-level file, use generic name
+    if (!room && !fileNameOnly.includes('climate') && !fileNameOnly.includes('energy_data')) {
+      room = 'Room';
+    }
+
+    return { building, floor, room };
   };
 
   const detectMetricMappings = (csvData: any[], sensorType: SensorType): any[] => {
@@ -392,17 +641,33 @@ export default function ZipFlowGenerator({
 
   const getSensorColor = (sensorType: SensorType): string => {
     const colors: Record<SensorType, string> = {
-      temperature: '#EF4444',
-      humidity: '#06B6D4',
-      co2: '#64748B',
+      indoor_climate: '#EF4444',
+      weather: '#06B6D4',
+      energy_consumption: '#22C55E',
       occupancy: '#8B5CF6',
-      light: '#FBBF24',
-      energy: '#22C55E',
+      power: '#F59E0B',
+      water: '#3B82F6',
     };
     return colors[sensorType] || '#9CA3AF';
   };
 
   if (!isOpen) return null;
+
+  // Show wizard if structure is parsed
+  if (showWizard && parsedStructure) {
+    return (
+      <ZipWizard
+        isOpen={showWizard}
+        onClose={() => {
+          setShowWizard(false);
+          setParsedStructure(null);
+          onClose();
+        }}
+        onGenerate={onGenerate}
+        parsedStructure={parsedStructure}
+      />
+    );
+  }
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">

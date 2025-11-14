@@ -76,7 +76,7 @@ export default function NodeLibrary({ onDragStart }: NodeLibraryProps) {
           )}
         </div>
         <p className="text-xs text-gray-500 mt-2 italic">
-          Type can be selected in properties: Temperature, Humidity, CO2, Occupancy, Light, or Energy
+          Type can be selected in properties: Indoor Climate, Weather, Energy Consumption, Occupancy, Power, or Water
         </p>
       </div>
 

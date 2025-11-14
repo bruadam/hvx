@@ -223,8 +223,34 @@ def run(
         else:
             ts_data[metric] = pd.Series(values)
 
+    season_hint = kwargs.get('season')
+    if isinstance(season_hint, str):
+        season_hint_normalized = season_hint.lower()
+        if season_hint_normalized in ("heating", "cooling"):
+            mapped_season = season_hint_normalized
+        elif season_hint_normalized in ("winter", "autumn"):
+            mapped_season = "heating"
+        else:
+            mapped_season = "non_heating"
+    else:
+        mapped_season = None
+
+    metadata = {
+        'building_type': spatial_entity.building_type,
+        'room_type': spatial_entity.room_type,
+        'area_m2': getattr(spatial_entity, 'area_m2', None),
+        'design_occupancy': getattr(spatial_entity, 'design_occupancy', None),
+        'entity_name': spatial_entity.name,
+        'season_hint': mapped_season,
+    }
+
     # Run calculator assessment
-    tail_result = calculator.assess_timeseries(ts_data, thresholds)
+    tail_result = calculator.assess_timeseries(
+        ts_data,
+        thresholds,
+        metadata=metadata,
+        building_name=spatial_entity.name,
+    )
 
     # Create TestResult for each domain
     test_results = []
@@ -254,6 +280,7 @@ def run(
                     'rating_label': domain_result.rating_label,
                     'compliance_rate': domain_result.compliance_rate,
                     'parameter_count': domain_result.parameter_count,
+                    'dominant_color': domain_result.dominant_color,
                 }
             )
             test_results.append(test_result)
@@ -269,6 +296,45 @@ def run(
     )
 
     # Create ComplianceAnalysis
+    parameter_payload = {
+        param.parameter: {
+            'rating': param.rating_label,
+            'rating_value': param.rating.value,
+            'dominant_color': param.dominant_color,
+            'distribution': param.distribution,
+            'sample_count': param.sample_count,
+            'summary_value': param.summary_value,
+            'metadata': param.metadata,
+        }
+        for param in tail_result.parameter_results
+    }
+
+    summary_results = {
+        'overall_rating': tail_result.overall_rating.value,
+        'overall_rating_label': tail_result.overall_rating_label,
+        'overall_compliance_rate': tail_result.overall_compliance_rate,
+        'rating_color': rating_info.get('color', 'unknown'),
+        'rating_description': rating_info.get('description', ''),
+        'domains': {
+            domain_name: {
+                'rating': domain_result.rating.value,
+                'rating_label': domain_result.rating_label,
+                'compliance_rate': domain_result.compliance_rate,
+                'dominant_color': domain_result.dominant_color,
+                'parameter_count': domain_result.parameter_count,
+            }
+            for domain_enum, domain_name in domain_map.items()
+            if domain_enum in tail_result.categories
+            for domain_result in [tail_result.categories[domain_enum]]
+        },
+        'parameters': parameter_payload,
+        'total_parameters': tail_result.total_parameters,
+        'standard': 'TAIL',
+        'version': config.get('version', '2024.1'),
+        'visualization': tail_result.visualization,
+        'graph_data': tail_result.visualization,
+    }
+
     analysis = ComplianceAnalysis(
         id=f"compliance_{spatial_entity.id}_tail",
         name=f"TAIL Rating for {spatial_entity.name}",
@@ -280,27 +346,18 @@ def run(
         status=AnalysisStatus.COMPLETED,
         started_at=datetime.now(timezone.utc),
         ended_at=datetime.now(timezone.utc),
-        summary_results={
-            'overall_rating': tail_result.overall_rating.value,
-            'overall_rating_label': tail_result.overall_rating_label,
-            'overall_compliance_rate': tail_result.overall_compliance_rate,
-            'rating_color': rating_info.get('color', 'unknown'),
-            'rating_description': rating_info.get('description', ''),
-            'domains': {
-                domain_name: {
-                    'rating': domain_result.rating.value,
-                    'rating_label': domain_result.rating_label,
-                    'compliance_rate': domain_result.compliance_rate,
-                }
-                for domain_enum, domain_name in domain_map.items()
-                if domain_enum in tail_result.categories
-                for domain_result in [tail_result.categories[domain_enum]]
-            },
-            'total_parameters': tail_result.total_parameters,
-            'standard': 'TAIL',
-            'version': config.get('version', '2024.1'),
-        }
+        summary_results=summary_results,
     )
+
+    # Persist summary onto the spatial entity for downstream aggregations/visuals
+    spatial_entity.computed_metrics['tail_overall_rating'] = tail_result.overall_rating.value
+    spatial_entity.computed_metrics['tail_overall_rating_label'] = tail_result.overall_rating_label
+    spatial_entity.computed_metrics['tail_domains'] = summary_results.get('domains', {})
+    spatial_entity.computed_metrics['tail_visualization'] = tail_result.visualization
+    spatial_entity.tail_rating = tail_result.overall_rating.value
+    spatial_entity.tail_rating_label = tail_result.overall_rating_label
+    spatial_entity.tail_domains = summary_results.get('domains', {})
+    spatial_entity.tail_visualization = tail_result.visualization
 
     return analysis
 

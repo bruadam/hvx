@@ -17,6 +17,7 @@ from .analysis import AggregatorType, AnalysisStatus, AnalysisType, ModelType
 from .access import PermissionScope, UserRole
 from .energy import EnergyCarrier, FuelUnit, PrimaryEnergyScope
 from .country import CountryCode
+from .timeseries import TimeResolution, AggregationMethod, DataCategory
 
 __all__ = [
     "SpatialEntityType",
@@ -42,4 +43,7 @@ __all__ = [
     "FuelUnit",
     "PrimaryEnergyScope",
     "CountryCode",
+    "TimeResolution",
+    "AggregationMethod",
+    "DataCategory",
 ]

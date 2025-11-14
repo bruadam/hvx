@@ -31,6 +31,19 @@ All CSV files contain 24 hours of hourly data (one full day):
 - **energy_sensor_building_a.csv** - Whole building energy consumption (108.9 - 412.8 kWh)
   - Higher during business hours
 
+#### Energy Meters (NEW!)
+- **energy_meters_building_a.csv** - Multi-carrier energy consumption data
+  - Electricity: 106.8 - 252.3 kWh
+  - Gas: 34.5 - 75.9 kWh
+  - District Heating: 135.8 - 258.7 kWh
+  - Total: 277.1 - 586.9 kWh
+  - Enables automatic EPC calculation!
+
+#### Outdoor Climate (NEW!)
+- **outdoor_temperature.csv** - Outdoor temperature data for adaptive comfort analysis
+  - Range: 0.8°C - 6.8°C
+  - Used by EN16798 adaptive comfort model
+
 ### Sample Portfolio
 
 - **sample_portfolio.json** - Pre-configured portfolio structure
