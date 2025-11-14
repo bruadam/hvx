@@ -1,9 +1,0 @@
-description: Morning (8-11), weekdays, excludes school holidays
-hours:
-  - 8
-  - 9
-  - 10
-  - 11
-weekdays_only: true
-exclude_holidays: true
-exclude_custom_holidays: true

@@ -1,0 +1,77 @@
+id: occupancy
+name: Occupancy Pattern Simulation
+module: simulations.models.occupancy.OccupancyCalculator
+description: Detect occupancy patterns and occupant counts from indoor CO2 time-series.
+version: 1
+spatial_scope:
+  run_on_types:
+    - room
+    - zone
+  rollup_from_children:
+    - room
+  aggregate_to_types:
+    - floor
+    - building
+    - portfolio
+requirements:
+  parameters:
+    required:
+      - parameter: co2
+        description: Indoor CO2 concentration (ppm) sampled at <=15 min cadence.
+    optional:
+      - parameter: ventilation_ach
+        description: Pre-computed ventilation rate for refining occupant count estimation.
+  metadata:
+    optional:
+      - path: volume_m3
+        description: Volume improves occupant mass-balance calculation.
+      - path: area_m2
+        description: Used as weighting factor for aggregation.
+      - path: design_occupancy
+        description: Optional baseline occupancy used when CO2 data is sparse.
+applicability:
+  building_types:
+    include:
+      - office
+      - education
+      - commercial
+      - healthcare
+      - hospitality
+      - mixed_use
+      - public
+      - other
+  room_types:
+    include:
+      - open_office
+      - private_office
+      - meeting_room
+      - conference_room
+      - classroom
+      - lecture_hall
+      - auditorium
+      - cafeteria
+      - laboratory
+      - gym
+      - other
+outputs:
+  - key: occupancy_rate
+    unit: fraction
+    description: Fraction of time the space is occupied.
+  - key: estimated_occupant_count
+    unit: persons
+    description: Estimated number of concurrent occupants.
+  - key: occupancy_pattern
+    description: List of occupied intervals for scheduling.
+  - key: typical_occupancy_hours
+    description: Frequent occupied hours of day.
+prerequisites: []
+aggregation:
+  type: weighted_average
+  metric: occupancy_rate
+  weight_properties:
+    - area_m2
+    - design_occupancy
+  rollup_targets:
+    - floor
+    - building
+    - portfolio

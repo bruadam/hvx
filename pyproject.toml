@@ -49,7 +49,7 @@ Homepage = "https://brunoadam.eu/"
 Repository = "https://github.com/bruadam/hvx"
 
 [tool.setuptools]
-packages = ["core"]
+packages = ["core", "connectors", "standards", "simulations", "app"]
 
 [tool.setuptools.package-data]
 core = ["py.typed"]

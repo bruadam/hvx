@@ -1,0 +1,94 @@
+Algorithm
+
+    Initialization:
+        Load all required libraries.
+        Set working directory.
+
+    Define the perform_TAILanalysis Function:
+        Input: Building indoor environmental measures and room data.
+        Output: TAIL label, TAIL score, and visual plot.
+        Steps:
+		    Extract unqiue building names from the dataset.
+			Validate the data input is from a single building.
+            Convert Date_Time to date-time format.
+            Filter data by weekdays and working hours. 
+				These need to be specified based on building type.
+            Calculate total floor area and occupancy of rooms monitored in the building.
+            Compute ventilation thresholds (Green, Yellow, Orange, Red) from the standards.
+            Loop through each environmental parameter:
+				Identify unique parameters.
+                Filter invalid datapoints (e.g., negative RH).
+				Process data to examine the category they fall in.
+                Categorize values.
+				Output:
+					Modified dataframes for each parameter with the processed data and categorized values.
+					Store the processed dataframe under a name derived from the parameter (e.g., temperature, RH, CO2).
+					Save the processed dataframes in a list (results) for further calculations.
+				Details for Specific Parameters:
+					Temperature:
+						Determine the season (Heating or Non-heating) based on the month.
+						Categorize temperature values into Green, Yellow, Orange, or Red based on season and value ranges.
+					Relative Humidity (RH):
+						Ensure values are within a valid range (1% to 100%).
+						Round values to the nearest integer.
+						Categorize RH values based on building type (Office or Hotel) and value ranges.
+					Particulate Matter (PM2.5):
+						Categorize PM2.5 values into Green, Yellow, or Red based on health based thresholds.
+					CO2:
+						Calculate the 95th percentile of CO2 values for the building.
+						Categorize CO2 values based on the calculated 95th percentile and the thresholds.
+					Formaldehyde:
+						Categorize formaldehyde levels into Green, Yellow, or Red based on health based thresholds.
+					Benzene:
+						Categorize benzene levels into Green, Yellow, or Red based on health based thresholds.
+					Radon:
+                        Categorize radon levels into Green, Yellow, or Red based on health based thresholds.
+					Ventilation:
+                        Categorize ventilation rates into Green, Yellow, Orange, or Red based on calculated ventilation limits from total floor area monitored.
+					Mold:
+						Categorize mold presence or absence into Green, Yellow, Orange, or Red based on visible mold areas. The mold inspection data must be reported in specific phrases as part of the dataset.
+					Noise:
+                        Calculate the 5th percentile of noise levels for each room.
+						Categorize noise levels based on room type (Small office, Open office, Hotel) and 5th percentile values.
+					Illuminance:
+                        Calculate percentages of records meeting illuminance standards.
+						Categorize illuminance levels based on these percentages and building type (Office or Hotel).
+					Daylight Factor:
+						Categorize the simulated daylight factor values into Green, Yellow, Orange, or Red based on thresholds.
+					
+			Calculate TAIL labels for each category (Thermal, IAQ, Acoustics, Lighting).
+				Details:
+					Thermal:
+						Calculate label based on the frequency of temperature categories in all monitored zones.
+						Assign TemperatureLabel based on the distribution of Green, Yellow, Orange, and Red categories.
+						ThermalLabel = TemperatureLabel
+					IAQ:
+						Calculate individual labels for parameters like CO2, RH, Benzene, Formaldehyde, PM2.5, Radon, Ventilation, and Mold.
+						All calculations are performed at the building/zone level, i.e., for all monitored data.
+						IndoorAirLabel = max(CO2, RH, Benzene, Formaldehyde, PM2.5, Radon, Ventilation, and Mold labels), i.e., the worst label from the individual parameter labels.
+					Acoustics:
+						Calculate NoiseLabel based on noise levels.
+						AcousticsLable = NoiseLabel
+					Lighting:
+						Calculate labels for illuminance and daylight factor.
+						All calculations are performed at the building/zone level, i.e., for all monitored data.
+						LightingLabel = max(illuminance and daylight factor labels) i.e., the worst label.
+						
+				Calculate TAIL = max(ThermalLabel, IndoorAirLabel, AcousticsLabel, LightingLabel).
+            Generate a visualization of the detailed TAIL results.
+            Save the plot as an image.
+            Return results.
+
+    Run Analysis for All Buildings:
+	    Set working directory to where the data csv files are.
+        Load the main dataset.
+        Identify unique buildings.
+        For each building:
+            Subset data.
+            Run perform_TAILanalysis.
+            Store results.
+
+    Compile and Save Final Results:
+        Extract TAIL results for all buildings.
+        Save the results to a CSV file.
+		

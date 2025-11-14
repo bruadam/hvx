@@ -1,0 +1,57 @@
+id: real_epc
+name: Real EPC Rating Simulation
+module: simulations.models.real_epc.calculate_epc_rating
+description: Map delivered primary energy intensity to an EPC rating using EU thresholds.
+version: 1
+spatial_scope:
+  run_on_types:
+    - building
+  aggregate_to_types:
+    - portfolio
+requirements:
+  parameters:
+    required:
+      - parameter: primary_energy_kwh_m2
+        description: Delivered primary energy intensity for the entity.
+    optional:
+      - parameter: country_code
+        description: ISO country code overriding entity metadata.
+  metadata:
+    optional:
+      - path: country
+        description: Used when a country code parameter is not supplied.
+      - path: area_m2
+        description: Enables weighted aggregation across portfolio nodes.
+applicability:
+  building_types:
+    include:
+      - office
+      - education
+      - commercial
+      - healthcare
+      - hospitality
+      - industrial
+      - residential
+      - mixed_use
+      - public
+      - other
+  room_types:
+    include:
+      - other
+outputs:
+  - key: rating
+    description: EPC label derived from configured national curve.
+  - key: primary_energy_kwh_m2
+    unit: kwh_per_m2
+    description: Echoes the provided intensity value for traceability.
+prerequisites:
+  - model_id: rc_thermal
+    optional: true
+    reason: RC thermal simulations can supply the primary energy KPI when meters are absent.
+aggregation:
+  type: weighted_average
+  metric: primary_energy_kwh_m2
+  weight_properties:
+    - area_m2
+  rollup_targets:
+    - portfolio
